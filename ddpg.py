@@ -1,3 +1,7 @@
+
+import numpy as np
+import tensorflow as tf
+
 #### Actor
 class Actor():
     # __init__
