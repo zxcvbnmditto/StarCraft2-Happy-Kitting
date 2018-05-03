@@ -41,7 +41,7 @@ class Actor():
         self.policy_gradient = tf.gradients(ys = self.a , xs = self.target_a_params, grad_ys = q_grads)
 
         # train_op
-        self.train_op = tf.train.GradientDescentOptimizer(self.lr).minimize(-self.policy_gradient, var_list = self.a_params)
+        self.train_actor = tf.train.GradientDescentOptimizer(self.lr).minimize(-self.policy_gradient, var_list = self.a_params)
 
     # _build_net
     # Build the neural network. 
@@ -84,6 +84,7 @@ class Actor():
                     trainable = trainable
                 )
 
+        # output might have to fix later
         return output_layer
 
     # learn
@@ -111,15 +112,80 @@ class Critic():
         q_grads gradient of q over action
     '''
 
-    def __init__(self, sess, state_dim, action_dim, learning_rate, gamma, replacement, a, a_):
+    def __init__(self, sess, state_dim, action_dim, learning_rate, gamma, a, a_):
+        self.sess = sess
+        self.s_dim = state_dim
+        self.a_dim = action_dim
+        self.lr = learning_rate
+        self.gamma = gamma
+        self.a = a
+        self.a_ = a_
+
+        # setup critic network and critic target network
+        with tf.variable_scope('Critic'):
+            self.q = build_critic(S, self.a, 'Critic/critic_network', trainable = True)
+            self.target_q = build_critic(S_, self.a_, 'Critic/critic_target', trainable = False)
+
+        self.q_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Critic/critic_network')
+        self.target_q_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Critic/critic_target')
+
+        self.soft_update = [
+            tf.assign(t,(1 - TAU) * t + TAU * e )
+            for (t,e) in zip(self.target_q_params, self.q_params)
+        ]
+
+        self.target_q = R + self.gamma * self.target_q
+
+        self.td_error = self.target_q - self.q
+
+        self.loss = tf.reduce_mean(tf.square(self.td_error))
+
+        self.train_critic = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss, var_list = self.q_params)
+
+        self.q_gradient = tf.gradients(ys = self.q , xs = self.a)
 
     # _build_net
     # Build the neural network. 
     # 2 hidden layer, 30 nodes each
     def build_critic(self, s, a, scope, trainable):
+        with tf.variable_scope(scope):
+            init_w = tf.random_normal_initializer(0, 0.1)
+            init_b = tf.constant_initializer(0.1)
+            node_count = 30
+
+            with tf.variable_scope('l1'):
+                w1_s = tf.get_variable('w1_s', [self.s_dim, node_count], initializer = init_w, trainable = trainable)
+                w1_a = tf.get_variable('w1_a', [self.a_dim, node_count], initializer = init_w, trainable = trainable)
+                b1 = tf.get_variable('b1_a', [1, node_count], initializer = init_b, trainable = trainable)
+                l1 = tf.nn.relu(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
+
+            with tf.variable_scope('l2'):
+                l2 = tf.layers.dense(
+                    l1,
+                    node_count,
+                    activation=tf.nn.relu,
+                    kernel_initializer=init_w,
+                    bias_initializer=init_b,
+                    name='l2',
+                    trainable=trainable
+                )
+
+            with tf.variable_scope('output_layer'):
+                output_layer = tf.layers.dense(
+                    l2,
+                    1,
+                    activation = tf.nn.relu,
+                    kernel_initializer = init_w,
+                    bias_initializer = init_b,
+                    name = 'output_layer',
+                    trainable = trainable
+                )
+
+        return output_layer
 
     # learn
     def learn(self, s, a, r, s_):
+        self.sess.run(self.train_critic, dict_feed={S: s, self.a: a, R: r, S_: s})
 
 #### Memory
 
