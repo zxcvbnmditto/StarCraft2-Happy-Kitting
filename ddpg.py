@@ -3,8 +3,15 @@ import numpy as np
 import tensorflow as tf
 
 #### Global Variables
-TAU = 0.01
+MAX_EPISODES = 200
+MAX_EP_STEPS = 200
 
+LR_A = 0.001
+LR_C = 0.001
+GAMMA = 0.9
+TAU = 0.01
+MEMORY_CAPACITY = 10000
+BATCH_SIZE = 32
 
 #### Actor
 class Actor():
@@ -210,6 +217,11 @@ class Memory():
         return self.data[indices, :]
 
 #### initialization + sess
+sess = tf.Session()
+
+sess.run(tf.global_variables_initializer())
+
+tf.summary.FileWriter("logs/", sess.graph)
 
 
 #### environment
