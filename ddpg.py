@@ -44,8 +44,9 @@ class Actor():
             for (t,e) in zip(self.target_a_params, self.a_params)
         ]
 
+    def add_policy_gradient(self, q_grads):
         # gradient of policy over target params
-        self.policy_gradient = tf.gradients(ys = self.a , xs = self.target_a_params, grad_ys = q_grads)
+        self.policy_gradient = tf.gradients(ys = self.a, xs = self.target_a_params, grad_ys = q_grads)
 
         # train_op
         self.train_actor = tf.train.GradientDescentOptimizer(self.lr).minimize(-self.policy_gradient, var_list = self.a_params)
@@ -91,7 +92,7 @@ class Actor():
                     trainable = trainable
                 )
 
-        # output might have to fix later
+        # output might have to fix later by rescaling the output actions
         return output_layer
 
     # learn
@@ -137,8 +138,8 @@ class Critic():
         self.target_q_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Critic/critic_target')
 
         self.soft_update = [
-            tf.assign(t,(1 - TAU) * t + TAU * e )
-            for (t,e) in zip(self.target_q_params, self.q_params)
+            tf.assign(t, (1 - TAU) * t + TAU * e )
+            for (t, e) in zip(self.target_q_params, self.q_params)
         ]
 
         self.target_q = R + self.gamma * self.target_q
@@ -219,9 +220,32 @@ class Memory():
 #### initialization + sess
 sess = tf.Session()
 
+'''
+state_dim = env.get_state_dim()
+action_dim = env.get_action_dim()
+'''
+
+'''
+actor = Actor(sess, action_dim, LR_A)
+critic = Critic(sess, state_dim, action_dim, LR_C, GAMMA, actor.a, actor.a_)
+actor.add_grad_to_graph(critic.a_grads)
+'''
+
 sess.run(tf.global_variables_initializer())
+
+# have to add the shape
+S = tf.placeholder('S', dtype = tf.float32, name = "S")
+R = tf.placeholder('S', dtype = tf.float32, name = "R")
+S_ = tf.placeholder('S', dtype = tf.float32, name = "S_")
 
 tf.summary.FileWriter("logs/", sess.graph)
 
 
 #### environment
+'''
+for play_count in MAX_EPISODES:
+    env = env.get_current_state()
+    
+    
+'''
+
