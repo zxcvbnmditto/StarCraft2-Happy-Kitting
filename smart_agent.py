@@ -3,6 +3,7 @@ import math
 
 import numpy as np
 import pandas as pd
+import time
 
 from pysc2.agents import base_agent
 from pysc2.lib import actions
@@ -10,9 +11,6 @@ from pysc2.lib import features
 
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
-_BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
-_BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
-_TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
@@ -21,6 +19,7 @@ _UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 _UNIT_HIT_POINTS = features.SCREEN_FEATURES.unit_hit_points.index
 _UNIT_HIT_POINTS_RATIO = features.SCREEN_FEATURES.unit_hit_points_ratio.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
+
 
 _PLAYER_SELF = 1
 
@@ -48,7 +47,7 @@ KILL_BUILDING_REWARD = 0.5
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.7):
         self.actions = actions  # a list
         self.lr = learning_rate
         self.gamma = reward_decay
@@ -101,6 +100,7 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_action = None
         self.previous_state = None
 
+
     def transformLocation(self, x, x_distance, y, y_distance):
         if not self.base_top_left:
             return [x - x_distance, y - y_distance]
@@ -110,6 +110,8 @@ class SmartAgent(base_agent.BaseAgent):
     def step(self, obs):
         super(SmartAgent, self).step(obs)
 
+        #time.sleep(0.01)
+
         player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
@@ -117,8 +119,9 @@ class SmartAgent(base_agent.BaseAgent):
         unit_hit_points = obs.observation['screen'][_UNIT_HIT_POINTS]
         unit_hit_points_ratio = obs.observation['screen'][_UNIT_HIT_POINTS_RATIO]
 
+        test = obs.observation['multi_select']
+
         killed_unit_score = obs.observation['score_cumulative'][5]
-        killed_building_score = obs.observation['score_cumulative'][6]
 
         current_state = [
             unit_type,
@@ -126,24 +129,25 @@ class SmartAgent(base_agent.BaseAgent):
             unit_hit_points_ratio
         ]
 
-        self.print_data(unit_hit_points_ratio)
+        print(player_x, player_y, self.steps)
+        # self.print_data(unit_hit_points_ratio)
 
         if self.previous_action is not None:
             reward = 0
 
             if killed_unit_score > self.previous_killed_unit_score:
                 reward += KILL_UNIT_REWARD
+            else:
+                reward -= 1
 
-            if killed_building_score > self.previous_killed_building_score:
-                reward += KILL_BUILDING_REWARD
 
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
+            print(self.reward, self.steps)
 
         rl_action = self.qlearn.choose_action(str(current_state))
         smart_action = smart_actions[rl_action]
 
         self.previous_killed_unit_score = killed_unit_score
-        self.previous_killed_building_score = killed_building_score
         self.previous_state = current_state
         self.previous_action = rl_action
 
@@ -156,10 +160,8 @@ class SmartAgent(base_agent.BaseAgent):
 
         elif smart_action == ACTION_ATTACK:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                if self.base_top_left:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [39, 45]])
-
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [21, 24]])
+                loc = (self.steps % 4 + 1) * 14
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [loc, loc]])
 
         return actions.FunctionCall(_NO_OP, [])
 
