@@ -23,11 +23,6 @@ _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 _PLAYER_SELF = 1
 
-_TERRAN_COMMANDCENTER = 18
-_TERRAN_SCV = 45
-_TERRAN_SUPPLY_DEPOT = 19
-_TERRAN_BARRACKS = 21
-
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 
@@ -107,7 +102,7 @@ class SmartAgent(base_agent.BaseAgent):
 
         return [x + x_distance, y + y_distance]
 
-    def step(self, obs):
+    def step(self, obs,):
         super(SmartAgent, self).step(obs)
 
         #time.sleep(0.01)
@@ -119,7 +114,13 @@ class SmartAgent(base_agent.BaseAgent):
         unit_hit_points = obs.observation['screen'][_UNIT_HIT_POINTS]
         unit_hit_points_ratio = obs.observation['screen'][_UNIT_HIT_POINTS_RATIO]
 
-        test = obs.observation['multi_select']
+        units = obs.observation['multi_select']
+
+        health = []
+
+        for i in range(units.shape[0]):
+            health.append(units[i][2])
+
 
         killed_unit_score = obs.observation['score_cumulative'][5]
 
@@ -129,7 +130,7 @@ class SmartAgent(base_agent.BaseAgent):
             unit_hit_points_ratio
         ]
 
-        print(player_x, player_y, self.steps)
+        print(health, self.steps)
         # self.print_data(unit_hit_points_ratio)
 
         if self.previous_action is not None:
