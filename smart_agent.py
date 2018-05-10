@@ -3,6 +3,7 @@ import math
 
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 import time
 
 from pysc2.agents import base_agent
@@ -57,9 +58,9 @@ smart_actions = [
     ACTION_ATTACK_UP_RIGHT,
     ACTION_ATTACK_DOWN_LEFT,
     ACTION_ATTACK_DOWN_RIGHT,
-    ACTION_SELECT_ARMY_1,
-    ACTION_SELECT_ARMY_2,
-    ACTION_SELECT_ARMY_3,
+    #ACTION_SELECT_ARMY_1,
+    #ACTION_SELECT_ARMY_2,
+    #ACTION_SELECT_ARMY_3,
     ACTION_SELECT_UNIT_1,
     ACTION_SELECT_UNIT_2,
     ACTION_SELECT_UNIT_3
@@ -111,8 +112,6 @@ class QLearningTable:
             self.q_table = self.q_table.append(
                 pd.Series([0] * len(self.actions), index=self.q_table.columns, name=state))
 
-
-
 class SmartAgent(base_agent.BaseAgent):
     def __init__(self):
         super(SmartAgent, self).__init__()
@@ -135,7 +134,7 @@ class SmartAgent(base_agent.BaseAgent):
     def step(self, obs,):
         super(SmartAgent, self).step(obs)
 
-        #time.sleep(0.2)
+        # time.sleep(0.2)
 
         player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
@@ -144,11 +143,13 @@ class SmartAgent(base_agent.BaseAgent):
         units_count = obs.observation['multi_select'].shape[0]
 
         units = []
-        hp = []
+        hp = [0,0,0,0]
 
         for i in range(units_count):
             units.append(obs.observation['multi_select'][i])
-            hp.append(obs.observation['multi_select'][i][2])
+            hp[i] = obs.observation['multi_select'][i][2]
+
+        hp[3] = obs.observation['single_select'][0][2]
 
         current_state = [
             hp
@@ -157,7 +158,7 @@ class SmartAgent(base_agent.BaseAgent):
         killed_unit_score = obs.observation['score_cumulative'][5]
         lost_unit_score = units_count
 
-        # print(player_x, player_y, self.steps)
+        # print(current_state, self.previous_state, self.steps)
         # self.print_data(unit_hit_points_ratio)
 
         if self.previous_action is not None:
@@ -264,7 +265,4 @@ class SmartAgent(base_agent.BaseAgent):
                 if len(xloc) >= 3 and len(yloc) >= 3:
                    # print(3, xloc[2], yloc[2])
                     return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[2], yloc[2]]])
-                    
-        
-        
 '''
