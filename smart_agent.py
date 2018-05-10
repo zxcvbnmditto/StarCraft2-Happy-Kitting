@@ -18,6 +18,7 @@ _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 _UNIT_HIT_POINTS = features.SCREEN_FEATURES.unit_hit_points.index
 _UNIT_HIT_POINTS_RATIO = features.SCREEN_FEATURES.unit_hit_points_ratio.index
+_UNIT_DENSITY_AA = features.SCREEN_FEATURES.unit_density_aa.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 
@@ -36,13 +37,13 @@ smart_actions = [
     ACTION_ATTACK,
 ]
 
-KILL_UNIT_REWARD = 0.2
-KILL_BUILDING_REWARD = 0.5
+KILL_UNIT_REWARD = 1
+LOSS_UNIT_REWARD = -1
 
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
-    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.7):
+    def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):
         self.actions = actions  # a list
         self.lr = learning_rate
         self.gamma = reward_decay
@@ -90,7 +91,7 @@ class SmartAgent(base_agent.BaseAgent):
         self.qlearn = QLearningTable(actions=list(range(len(smart_actions))))
 
         self.previous_killed_unit_score = 0
-        self.previous_killed_building_score = 0
+        self.previous_lost_unit_score = 0
 
         self.previous_action = None
         self.previous_state = None
@@ -105,7 +106,7 @@ class SmartAgent(base_agent.BaseAgent):
     def step(self, obs,):
         super(SmartAgent, self).step(obs)
 
-        #time.sleep(0.01)
+        #time.sleep(0.2)
 
         player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
@@ -113,24 +114,24 @@ class SmartAgent(base_agent.BaseAgent):
         unit_type = obs.observation['screen'][_UNIT_TYPE]
         unit_hit_points = obs.observation['screen'][_UNIT_HIT_POINTS]
         unit_hit_points_ratio = obs.observation['screen'][_UNIT_HIT_POINTS_RATIO]
+        unit_density_aa= obs.observation['screen'][_UNIT_DENSITY_AA]
+        units_count = obs.observation['multi_select'].shape[0]
 
-        units = obs.observation['multi_select']
+        units = []
+        hp = []
 
-        health = []
-
-        for i in range(units.shape[0]):
-            health.append(units[i][2])
-
-
-        killed_unit_score = obs.observation['score_cumulative'][5]
+        for i in range(units_count):
+            units.append(obs.observation['multi_select'][i])
+            hp.append(obs.observation['multi_select'][i][2])
 
         current_state = [
-            unit_type,
-            unit_hit_points,
-            unit_hit_points_ratio
+            hp
         ]
 
-        print(health, self.steps)
+        killed_unit_score = obs.observation['score_cumulative'][5]
+        lost_unit_score = units_count
+
+        # print(obs.observation['screen'][_UNIT_DENSITY_AA].shape, hp, self.steps)
         # self.print_data(unit_hit_points_ratio)
 
         if self.previous_action is not None:
@@ -138,17 +139,18 @@ class SmartAgent(base_agent.BaseAgent):
 
             if killed_unit_score > self.previous_killed_unit_score:
                 reward += KILL_UNIT_REWARD
-            else:
-                reward -= 1
 
+            if lost_unit_score < self.previous_lost_unit_score:
+                reward += LOSS_UNIT_REWARD
 
             self.qlearn.learn(str(self.previous_state), self.previous_action, reward, str(current_state))
-            print(self.reward, self.steps)
+            # print(self.reward, self.steps)
 
         rl_action = self.qlearn.choose_action(str(current_state))
         smart_action = smart_actions[rl_action]
 
         self.previous_killed_unit_score = killed_unit_score
+        self.previous_lost_unit_score = lost_unit_score
         self.previous_state = current_state
         self.previous_action = rl_action
 
@@ -161,8 +163,20 @@ class SmartAgent(base_agent.BaseAgent):
 
         elif smart_action == ACTION_ATTACK:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                loc = (self.steps % 4 + 1) * 14
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [loc, loc]])
+                round = self.steps % 4
+                # the location should be somehow smart
+                if round == 0:
+                    print(0)
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 0]])
+                elif round == 1:
+                    print(1)
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 0]])
+                elif round == 2:
+                    print(2)
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 60]])
+                else:
+                    print(3)
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 60]])
 
         return actions.FunctionCall(_NO_OP, [])
 
