@@ -12,6 +12,7 @@ from pysc2.lib import features
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
@@ -23,6 +24,7 @@ _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 
 _PLAYER_SELF = 1
+_PLAYER_HOSTILE = 4
 
 _NOT_QUEUED = [0]
 _QUEUED = [1]
@@ -37,6 +39,12 @@ ACTION_ATTACK_UP_LEFT = 'attackupleft'
 ACTION_ATTACK_UP_RIGHT = 'attackupright'
 ACTION_ATTACK_DOWN_LEFT = 'attackdownleft'
 ACTION_ATTACK_DOWN_RIGHT = 'attackdownright'
+ACTION_SELECT_ARMY_1 = 'selectarmy1'
+ACTION_SELECT_ARMY_2 = 'selectarmy2'
+ACTION_SELECT_ARMY_3 = 'selectarmy3'
+ACTION_SELECT_UNIT_1 = 'selectunit1'
+ACTION_SELECT_UNIT_2 = 'selectunit2'
+ACTION_SELECT_UNIT_3 = 'selectunit3'
 
 smart_actions = [
     ACTION_DO_NOTHING,
@@ -48,7 +56,13 @@ smart_actions = [
     ACTION_ATTACK_UP_LEFT,
     ACTION_ATTACK_UP_RIGHT,
     ACTION_ATTACK_DOWN_LEFT,
-    ACTION_ATTACK_DOWN_RIGHT
+    ACTION_ATTACK_DOWN_RIGHT,
+    ACTION_SELECT_ARMY_1,
+    ACTION_SELECT_ARMY_2,
+    ACTION_SELECT_ARMY_3,
+    ACTION_SELECT_UNIT_1,
+    ACTION_SELECT_UNIT_2,
+    ACTION_SELECT_UNIT_3
 ]
 
 KILL_UNIT_REWARD = 1
@@ -127,9 +141,6 @@ class SmartAgent(base_agent.BaseAgent):
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
         # unit_type = obs.observation['screen'][_UNIT_TYPE]
-        # unit_hit_points = obs.observation['screen'][_UNIT_HIT_POINTS]
-        # unit_hit_points_ratio = obs.observation['screen'][_UNIT_HIT_POINTS_RATIO]
-        # unit_density_aa= obs.observation['screen'][_UNIT_DENSITY_AA]
         units_count = obs.observation['multi_select'].shape[0]
 
         units = []
@@ -146,7 +157,7 @@ class SmartAgent(base_agent.BaseAgent):
         killed_unit_score = obs.observation['score_cumulative'][5]
         lost_unit_score = units_count
 
-        # print(obs.observation['minimap'].shape, hp, self.steps)
+        # print(player_x, player_y, self.steps)
         # self.print_data(unit_hit_points_ratio)
 
         if self.previous_action is not None:
@@ -169,29 +180,46 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_state = current_state
         self.previous_action = rl_action
 
-        return self.perform_action(obs, smart_action)
+        return self.perform_action(obs, smart_action, player_x, player_y)
 
 
-
-    def perform_action(self, obs, action):
+    def perform_action(self, obs, action, xloc, yloc):
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
 
         elif action == ACTION_SELECT_ARMY:
-            if _SELECT_ARMY in obs.observation['available_actions']:
+           if _SELECT_ARMY in obs.observation['available_actions']:
                 return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
+
+        elif action == ACTION_SELECT_UNIT_1:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 1 and len(yloc) >= 1:
+                    #print(1)
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [0]])
+
+        elif action == ACTION_SELECT_UNIT_2:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 2 and len(yloc) >= 2:
+                    #print(2)
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [1]])
+
+        elif action == ACTION_SELECT_UNIT_3:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 3 and len(yloc) >= 3:
+                    #print(3)
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [2]])
 
         elif action == ACTION_ATTACK_UP:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 36]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 36]])
 
         elif action == ACTION_ATTACK_DOWN:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 36]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 36]])
 
         elif action == ACTION_ATTACK_LEFT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [32, 0]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [32, 0]])
 
         elif action == ACTION_ATTACK_RIGHT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
@@ -199,23 +227,44 @@ class SmartAgent(base_agent.BaseAgent):
 
         elif action == ACTION_ATTACK_UP_LEFT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 0]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 0]])
 
         elif action == ACTION_ATTACK_UP_RIGHT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 60]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 60]])
 
         elif action == ACTION_ATTACK_DOWN_LEFT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 0]])
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 0]])
 
         elif action == ACTION_ATTACK_DOWN_RIGHT:
             if _ATTACK_MINIMAP in obs.observation["available_actions"]:
                 return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 60]])
 
-
         return actions.FunctionCall(_NO_OP, [])
-
 
     def print_data(self, unit_hit_points_ratio):
         print(unit_hit_points_ratio)
+
+'''     
+        elif action == ACTION_SELECT_ARMY_1:
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(xloc) >= 1 and len(yloc) >= 1:
+                    #print(1, xloc[0], yloc[0])
+                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[0], yloc[0]]])
+
+        elif action == ACTION_SELECT_ARMY_2:
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(xloc) >= 2 and len(yloc) >= 2:
+                    #print(2, xloc[1], yloc[1])
+                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[1], yloc[1]]])
+
+        elif action == ACTION_SELECT_ARMY_3:
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(xloc) >= 3 and len(yloc) >= 3:
+                   # print(3, xloc[2], yloc[2])
+                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[2], yloc[2]]])
+                    
+        
+        
+'''
