@@ -126,14 +126,14 @@ class DeepQNetwork:
 
         # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            e1 = tf.layers.dense(self.s, 20, tf.nn.relu, kernel_initializer=w_initializer,
+            e1 = tf.layers.dense(self.s, 12, tf.nn.relu, kernel_initializer=w_initializer,
                                  bias_initializer=b_initializer, name='e1')
             self.q_eval = tf.layers.dense(e1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='q')
 
         # ------------------ build target_net ------------------
         with tf.variable_scope('target_net'):
-            t1 = tf.layers.dense(self.s_, 20, tf.nn.relu, kernel_initializer=w_initializer,
+            t1 = tf.layers.dense(self.s_, 12, tf.nn.relu, kernel_initializer=w_initializer,
                                  bias_initializer=b_initializer, name='t1')
             self.q_next = tf.layers.dense(t1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='t2')
@@ -152,6 +152,8 @@ class DeepQNetwork:
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
+
+        # transform a and r into 1D array
         transition = np.hstack((s, [a], [r], s_))
         # replace the old memory with new memory
         index = self.memory_counter % self.memory_size
@@ -213,7 +215,7 @@ class SmartAgent(base_agent.BaseAgent):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            25,
+            25, # one of the most important data that needs to be update
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
@@ -230,44 +232,17 @@ class SmartAgent(base_agent.BaseAgent):
         self.previous_action = None
         self.previous_state = None
 
-
-    def transformLocation(self, x, x_distance, y, y_distance):
-        if not self.base_top_left:
-            return [x - x_distance, y - y_distance]
-
-        return [x + x_distance, y + y_distance]
-
-    def step(self, obs,):
+    def step(self, obs):
         super(SmartAgent, self).step(obs)
 
-        #time.sleep(0.2)
-
+        # time.sleep(0.2)
         player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
-        unit_type = obs.observation['screen'][_UNIT_TYPE]
-        units_count = obs.observation['multi_select'].shape[0]
-
-        units = [[0,0,0,0,0,0,0], [0,0,0,0,0,0,0], [0,0,0,0,0,0,0]]
-
-        hp = [0, 0, 0, 0]
-
-        for i in range(units_count):
-            units[i] = (obs.observation['multi_select'][i])
-            hp[i] = obs.observation['multi_select'][i][2]
-
-        hp[3] = obs.observation['single_select'][0][2]
-
-        unit_type = np.array(unit_type).flatten()
-        units = np.array(units).flatten()
-        hp = np.array(hp).flatten()
-
-        current_state = np.hstack((units, hp))
-
         killed_unit_score = obs.observation['score_cumulative'][5]
-        lost_unit_score = units_count
+        lost_unit_score = obs.observation['multi_select'].shape[0]
 
-        # print(current_state, current_state.shape, self.steps)
+        current_state = self.extract_features(obs)
 
         if self.previous_action is not None:
             reward = 0
@@ -278,13 +253,10 @@ class SmartAgent(base_agent.BaseAgent):
             if lost_unit_score < self.previous_lost_unit_score:
                 reward += LOSS_UNIT_REWARD
 
-            # print(np.array(current_state), self.previous_state, self.previous_action, reward, self.steps)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
-            # print(self.reward, self.steps)
 
         rl_action = self.dqn.choose_action(np.array(current_state))
-
         smart_action = smart_actions[rl_action]
 
         self.previous_killed_unit_score = killed_unit_score
@@ -294,7 +266,32 @@ class SmartAgent(base_agent.BaseAgent):
 
         return self.perform_action(obs, smart_action, player_x, player_y)
 
+    # extract all the desired features as inputs for the DQN
+    def extract_features(self, obs):
 
+        # initialize default value to prevent shrinking
+        units = [[0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0]]
+        hp = [0, 0, 0, 0]
+
+        units_count = obs.observation['multi_select'].shape[0]
+        # assign the value if exist
+        for i in range(units_count):
+            units[i] = (obs.observation['multi_select'][i])
+            hp[i] = obs.observation['multi_select'][i][2]
+
+        # single select unit's hp
+        hp[3] = obs.observation['single_select'][0][2]
+
+        # flatten the array so that all features are a 1D array
+        units = np.array(units).flatten()
+        hp = np.array(hp).flatten()
+
+        # combine all features horizontally
+        current_state = np.hstack((units, hp))
+
+        return current_state
+
+    # make the desired action calculated by DQN
     def perform_action(self, obs, action, xloc, yloc):
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
@@ -306,19 +303,16 @@ class SmartAgent(base_agent.BaseAgent):
         elif action == ACTION_SELECT_UNIT_1:
             if _SELECT_UNIT in obs.observation['available_actions']:
                 if len(xloc) >= 1 and len(yloc) >= 1:
-                    #print(1)
                     return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [0]])
 
         elif action == ACTION_SELECT_UNIT_2:
             if _SELECT_UNIT in obs.observation['available_actions']:
                 if len(xloc) >= 2 and len(yloc) >= 2:
-                    #print(2)
                     return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [1]])
 
         elif action == ACTION_SELECT_UNIT_3:
             if _SELECT_UNIT in obs.observation['available_actions']:
                 if len(xloc) >= 3 and len(yloc) >= 3:
-                    #print(3)
                     return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [2]])
 
         elif action == ACTION_ATTACK_UP:
@@ -354,4 +348,3 @@ class SmartAgent(base_agent.BaseAgent):
                 return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 60]])
 
         return actions.FunctionCall(_NO_OP, [])
-d
