@@ -17,10 +17,6 @@ _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
-_UNIT_HIT_POINTS = features.SCREEN_FEATURES.unit_hit_points.index
-_UNIT_HIT_POINTS_RATIO = features.SCREEN_FEATURES.unit_hit_points_ratio.index
-_UNIT_DENSITY_AA = features.SCREEN_FEATURES.unit_density_aa.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
 
 
@@ -60,8 +56,9 @@ smart_actions = [
     ACTION_SELECT_UNIT_3
 ]
 
-KILL_UNIT_REWARD = 1
+KILL_UNIT_REWARD = 3
 LOSS_UNIT_REWARD = -1
+
 
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
@@ -112,6 +109,8 @@ class DeepQNetwork:
             tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
+        # self.saver = tf.train.Saver()
+        # self.saver.save(self.sess, 'testing_models', global_step=100)
         self.cost_his = []
         self.memory_counter = 0
 
@@ -223,7 +222,7 @@ class SmartAgent(base_agent.BaseAgent):
             memory_size=500,
             batch_size=32,
             e_greedy_increment=None,
-            output_graph=False
+            output_graph=True
         )
 
         self.previous_killed_unit_score = 0
@@ -240,9 +239,9 @@ class SmartAgent(base_agent.BaseAgent):
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
         killed_unit_score = obs.observation['score_cumulative'][5]
-        lost_unit_score = obs.observation['multi_select'].shape[0]
+        remaining_unit_score = obs.observation['multi_select'].shape[0]
 
-        current_state = self.extract_features(obs)
+        current_state, hp = self.extract_features(obs)
 
         if self.previous_action is not None:
             reward = 0
@@ -250,17 +249,31 @@ class SmartAgent(base_agent.BaseAgent):
             if killed_unit_score > self.previous_killed_unit_score:
                 reward += KILL_UNIT_REWARD
 
-            if lost_unit_score < self.previous_lost_unit_score:
+            if remaining_unit_score < 3:
                 reward += LOSS_UNIT_REWARD
+
+            # discourage idle
+            if hp[0] is 45 and hp[1] is 45 and hp[2] is 45:
+                reward -= 1
+
+            # encourage to survive
+            if 45 > hp[0] > 0:
+                reward += 0.1
+
+            if 45 > hp[1] > 0:
+                reward += 0.1
+
+            if 45 > hp[2] > 0:
+                reward += 0.1
 
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
+            # print(reward, self.steps)
 
         rl_action = self.dqn.choose_action(np.array(current_state))
         smart_action = smart_actions[rl_action]
 
         self.previous_killed_unit_score = killed_unit_score
-        self.previous_lost_unit_score = lost_unit_score
         self.previous_state = current_state
         self.previous_action = rl_action
 
@@ -289,7 +302,7 @@ class SmartAgent(base_agent.BaseAgent):
         # combine all features horizontally
         current_state = np.hstack((units, hp))
 
-        return current_state
+        return current_state, hp
 
     # make the desired action calculated by DQN
     def perform_action(self, obs, action, xloc, yloc):
@@ -348,3 +361,12 @@ class SmartAgent(base_agent.BaseAgent):
                 return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 60]])
 
         return actions.FunctionCall(_NO_OP, [])
+
+    def save_model(self, path, count):
+        self.saver.save(self.sess, path + '/model.pkl', count)
+
+    def load_model(self, path):
+        ckpt = tf.train.get_checkpoint_state(path)
+        self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+        return int(ckpt.model_checkpoint_path.split('-')[-1])
+
