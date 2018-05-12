@@ -115,7 +115,6 @@ def _main(unused_argv):
   if FLAGS.profile:
     print(stopwatch.sw)
 
-
 def entry_point():  # Needed so setup.py scripts work.
   app.run(_main)
 

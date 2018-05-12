@@ -10,6 +10,7 @@ _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
@@ -96,7 +97,7 @@ class SmartAgent(object):
 
         current_state, hp = self.extract_features(obs)
 
-        # print(self.reward, self.episodes, self.steps)
+        print(self.reward, self.episodes, self.steps)
 
         if self.previous_action is not None:
             reward = 0
@@ -183,36 +184,36 @@ class SmartAgent(object):
                     return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [2]])
 
         elif action == ACTION_ATTACK_UP:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 36]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 0]])# x,y => col,row
 
         elif action == ACTION_ATTACK_DOWN:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 36]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 83]])
 
         elif action == ACTION_ATTACK_LEFT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [32, 0]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 41]])
 
         elif action == ACTION_ATTACK_RIGHT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [32, 60]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 83]])
 
         elif action == ACTION_ATTACK_UP_LEFT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 0]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 0]])
 
         elif action == ACTION_ATTACK_UP_RIGHT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [0, 60]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 0]])
 
         elif action == ACTION_ATTACK_DOWN_LEFT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 0]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 83]])
 
         elif action == ACTION_ATTACK_DOWN_RIGHT:
-            if _ATTACK_MINIMAP in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [60, 60]])
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 83]])
 
         return actions.FunctionCall(_NO_OP, [])
 
@@ -225,11 +226,4 @@ class SmartAgent(object):
     def reset(self):
         self.episodes += 1
 
-    def save_model(self, path, count):
-        self.saver.save(self.sess, path + '/model.pkl', count)
-
-    def load_model(self, path):
-        ckpt = tf.train.get_checkpoint_state(path)
-        self.saver.restore(self.sess, ckpt.model_checkpoint_path)
-        return int(ckpt.model_checkpoint_path.split('-')[-1])
 

@@ -49,7 +49,7 @@ class DeepQNetwork(object):
             tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
-        # self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver()
         # self.saver.save(self.sess, 'testing_models', global_step=100)
         self.cost_his = []
         self.memory_counter = 0
@@ -147,3 +147,11 @@ class DeepQNetwork(object):
         plt.ylabel('Cost')
         plt.xlabel('training steps')
         plt.show()
+
+    def save_model(self, path, count):
+        self.saver.save(self.sess, path + '/model.pkl', count)
+
+    def load_model(self, path):
+        ckpt = tf.train.get_checkpoint_state(path)
+        self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+        return int(ckpt.model_checkpoint_path.split('-')[-1])
