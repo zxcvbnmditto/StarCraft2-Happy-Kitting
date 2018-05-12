@@ -4,12 +4,12 @@ from algorithms.dqn import DeepQNetwork
 
 from pysc2.lib import actions
 from pysc2.lib import features
+from sklearn.cluster import KMeans
 
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
-_ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
@@ -93,11 +93,27 @@ class SmartAgent(object):
         test_y, test_x = (obs.observation['screen'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
 
         killed_unit_score = obs.observation['score_cumulative'][5]
-        remaining_unit_score = obs.observation['multi_select'].shape[0]
+        remaining_unit_count = obs.observation['multi_select'].shape[0]
+
+        units = []
+        # testing single select_point using kmean
+        if len(player_y) > 0:
+
+            for i in range(0, len(test_y)):
+                units.append((test_x[i], test_y[i]))
+
+            kmeans = KMeans(n_clusters=len(player_y))
+            kmeans.fit(units)
+
+            units = []
+            for i in range(0, len(player_y)):
+                units.append((int(kmeans.cluster_centers_[i][0]), int(kmeans.cluster_centers_[i][1])))
+
+        # print(units)
 
         current_state, hp = self.extract_features(obs)
 
-        print(self.reward, self.episodes, self.steps)
+        # print(self.reward, self.episodes, self.steps)
 
         if self.previous_action is not None:
             reward = 0
@@ -105,7 +121,7 @@ class SmartAgent(object):
             if killed_unit_score > self.previous_killed_unit_score:
                 reward += KILL_UNIT_REWARD
 
-            if remaining_unit_score < 3:
+            if remaining_unit_count < 3:
                 reward += LOSS_UNIT_REWARD
 
             # discourage idle
@@ -132,7 +148,7 @@ class SmartAgent(object):
         self.previous_state = current_state
         self.previous_action = rl_action
 
-        return self.perform_action(obs, smart_action, player_x, player_y)
+        return self.perform_action(obs, smart_action, units)
 
     # extract all the desired features as inputs for the DQN
     def extract_features(self, obs):
@@ -160,28 +176,28 @@ class SmartAgent(object):
         return current_state, hp
 
     # make the desired action calculated by DQN
-    def perform_action(self, obs, action, xloc, yloc):
+    def perform_action(self, obs, action, unit_locs):
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
 
-        elif action == ACTION_SELECT_ARMY:
-           if _SELECT_ARMY in obs.observation['available_actions']:
-                return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
+        #elif action == ACTION_SELECT_ARMY:
+        #   if _SELECT_ARMY in obs.observation['available_actions']:
+        #        return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
 
         elif action == ACTION_SELECT_UNIT_1:
-            if _SELECT_UNIT in obs.observation['available_actions']:
-                if len(xloc) >= 1 and len(yloc) >= 1:
-                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [0]])
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(unit_locs) >= 1:
+                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
 
         elif action == ACTION_SELECT_UNIT_2:
-            if _SELECT_UNIT in obs.observation['available_actions']:
-                if len(xloc) >= 2 and len(yloc) >= 2:
-                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [1]])
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(unit_locs) >= 2:
+                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[1]])
 
         elif action == ACTION_SELECT_UNIT_3:
-            if _SELECT_UNIT in obs.observation['available_actions']:
-                if len(xloc) >= 3 and len(yloc) >= 3:
-                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [2]])
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if len(unit_locs) >= 3:
+                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
 
         elif action == ACTION_ATTACK_UP:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
@@ -225,5 +241,22 @@ class SmartAgent(object):
     # from the origin base.agent
     def reset(self):
         self.episodes += 1
+
+'''
+        elif action == ACTION_SELECT_UNIT_1:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 1 and len(yloc) >= 1:
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [0]])
+
+        elif action == ACTION_SELECT_UNIT_2:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 2 and len(yloc) >= 2:
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [1]])
+
+        elif action == ACTION_SELECT_UNIT_3:
+            if _SELECT_UNIT in obs.observation['available_actions']:
+                if len(xloc) >= 3 and len(yloc) >= 3:
+                    return actions.FunctionCall(_SELECT_UNIT, [_NOT_QUEUED, [2]])
+'''
 
 
