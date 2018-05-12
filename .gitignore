@@ -5,4 +5,5 @@
 *logs/
 *checkpoint*/
 *test+models/
-*__pycache__
+*__pycache__/
+.DS_Store
