@@ -236,12 +236,17 @@ class SmartAgent(base_agent.BaseAgent):
 
         # time.sleep(0.2)
         player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
+        test_y, test_x = (obs.observation['screen'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
+
         self.base_top_left = 1 if player_y.any() and player_y.mean() <= 31 else 0
 
         killed_unit_score = obs.observation['score_cumulative'][5]
         remaining_unit_score = obs.observation['multi_select'].shape[0]
 
         current_state, hp = self.extract_features(obs)
+
+        print(test_y, test_x, self.steps)
+        print(player_y, player_x, self.steps)
 
         if self.previous_action is not None:
             reward = 0
