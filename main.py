@@ -39,7 +39,7 @@ flags.DEFINE_string("agent", "smart_agent2.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
-flags.DEFINE_string("map",  'HappyKiting3V2', "Name of a map to use.")
+flags.DEFINE_string("map", 'HappyKiting3V2', "Name of a map to use.")
 
 
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
@@ -80,7 +80,9 @@ def run_thread(agent_cls, map_name, visualize):
       visualize=visualize) as env:
     env = available_actions_printer.AvailableActionsPrinter(env)
     agent = agent_cls()
+
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
+
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
 
