@@ -247,22 +247,3 @@ class SmartAgent(base_agent.BaseAgent):
     def print_data(self, unit_hit_points_ratio):
         print(unit_hit_points_ratio)
 
-'''     
-        elif action == ACTION_SELECT_ARMY_1:
-            if _SELECT_POINT in obs.observation['available_actions']:
-                if len(xloc) >= 1 and len(yloc) >= 1:
-                    #print(1, xloc[0], yloc[0])
-                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[0], yloc[0]]])
-
-        elif action == ACTION_SELECT_ARMY_2:
-            if _SELECT_POINT in obs.observation['available_actions']:
-                if len(xloc) >= 2 and len(yloc) >= 2:
-                    #print(2, xloc[1], yloc[1])
-                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[1], yloc[1]]])
-
-        elif action == ACTION_SELECT_ARMY_3:
-            if _SELECT_POINT in obs.observation['available_actions']:
-                if len(xloc) >= 3 and len(yloc) >= 3:
-                   # print(3, xloc[2], yloc[2])
-                    return actions.FunctionCall(_SELECT_POINT, [[1], [xloc[2], yloc[2]]])
-'''
