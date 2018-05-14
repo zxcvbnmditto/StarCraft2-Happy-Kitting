@@ -67,7 +67,7 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            28, # one of the most important data that needs to be update
+            17, # one of the most important data that needs to be update # 17 or 7
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
@@ -118,8 +118,10 @@ class SmartAgent(object):
             if 45 > hp[2] > 0:
                 reward += 0.1
 
+            # print(reward, self.steps)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
+
 
         rl_action = self.dqn.choose_action(np.array(current_state))
         smart_action = smart_actions[rl_action]
@@ -150,57 +152,62 @@ class SmartAgent(object):
         player_units, enemy_units, distance = self.get_distance_and_locs(obs)
 
         # flatten the array so that all features are a 1D array
-        units = np.array(units).flatten()
         hp = np.array(hp).flatten()
-        # player_units = np.array(player_units).flatten()
-        # enemy_units = np.array(enemy_units).flatten()
+        feature1 = np.array(player_units).flatten()
+        feature2 = np.array(enemy_units).flatten()
         distance = np.array(distance).flatten()
 
         # combine all features horizontally
-        current_state = np.hstack((units, hp, distance))
+        current_state = np.hstack((hp, distance, feature1, feature2))
 
         return current_state, hp, player_units, enemy_units, distance
 
     def get_distance_and_locs(self, obs):
-        player_y, player_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
+        # calculate player unit location
+        player_unit_count = obs.observation['player'][8]
         player_unit_y, player_unit_x = (obs.observation['screen'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
-
         player_units = []
-        # testing single select_point using kmean
-        if len(player_y) > 0:
 
-            for i in range(0, len(player_unit_y)):
+        if player_unit_count > 0:
+
+            for i in range(0, player_unit_count):
                 player_units.append((player_unit_x[i], player_unit_y[i]))
 
-            kmeans = KMeans(n_clusters=len(player_y))
+            kmeans = KMeans(n_clusters=player_unit_count)
             kmeans.fit(player_units)
 
             player_units = []
-            for i in range(0, len(player_y)):
+            for i in range(0, player_unit_count):
                 player_units.append((int(kmeans.cluster_centers_[i][0]), int(kmeans.cluster_centers_[i][1])))
 
-        # calculate opponents unit location
-        opponent_y, opponent_x = (obs.observation['minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
-        opponent_unit_y, opponent_unit_x = (obs.observation['screen'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
+        for i in range(player_unit_count, 3):
+            player_units.append((int(-1), int(-1)))
 
+        # calculate opponents unit location
+        opponent_unit_y, opponent_unit_x = (obs.observation['screen'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
+        opponent_unit_count = math.ceil(opponent_unit_y.shape[0] / 12)
         opponent_units = []
 
-        if len(opponent_y) > 0:
+        if opponent_unit_count > 0:
 
-            for i in range(0, len(opponent_unit_y)):
+            for i in range(0, opponent_unit_count):
                 opponent_units.append((opponent_unit_x[i], opponent_unit_y[i]))
 
-            kmeans = KMeans(n_clusters=len(opponent_y))
+            kmeans = KMeans(n_clusters=opponent_unit_count)
             kmeans.fit(opponent_units)
 
             opponent_units = []
-            for i in range(0, len(opponent_y)):
+            for i in range(0, opponent_unit_count):
                 opponent_units.append((int(kmeans.cluster_centers_[i][0]), int(kmeans.cluster_centers_[i][1])))
 
+        for i in range(opponent_unit_count, 2):
+           opponent_units.append((int(-1), int(-1)))
+
+        # calculate the min distance between each of player's unit to the opponent's
         min_distance = [1000000, 1000000, 1000000]
 
-        for i in range(0, len(player_y)):
-            for j in range(0, len(opponent_y)):
+        for i in range(0, player_unit_count):
+            for j in range(0, opponent_unit_count):
                 distance = int(math.sqrt((player_units[i][0] - opponent_units[j][0]) ** 2 + (
                             player_units[i][1] - opponent_units[j][1]) ** 2))
 
@@ -211,6 +218,8 @@ class SmartAgent(object):
 
         # make the desired action calculated by DQN
     def perform_action(self, obs, action, unit_locs):
+        unit_count = obs.observation['player'][8]
+
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
 
@@ -220,17 +229,17 @@ class SmartAgent(object):
 
         elif action == ACTION_SELECT_UNIT_1:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if len(unit_locs) >= 1:
+                if unit_count >= 1:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
 
         elif action == ACTION_SELECT_UNIT_2:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if len(unit_locs) >= 2:
+                if unit_count >= 2:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[1]])
 
         elif action == ACTION_SELECT_UNIT_3:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if len(unit_locs) >= 3:
+                if unit_count >= 3:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
 
         elif action == ACTION_ATTACK_UP:
