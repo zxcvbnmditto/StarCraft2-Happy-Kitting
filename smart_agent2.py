@@ -131,7 +131,7 @@ class SmartAgent(object):
             if 45 > hp[3] > 0:
                 reward += hp[3] * self.counter
 
-            print(hp, reward, self.counter)
+            #print(hp, reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 
