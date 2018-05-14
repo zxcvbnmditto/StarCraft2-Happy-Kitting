@@ -53,8 +53,8 @@ smart_actions = [
     ACTION_SELECT_UNIT_3
 ]
 
-KILL_UNIT_REWARD = 3
-LOSS_UNIT_REWARD = -1
+KILL_UNIT_REWARD = 300
+LOSS_UNIT_REWARD = 0
 
 class SmartAgent(object):
     def __init__(self):
@@ -86,6 +86,7 @@ class SmartAgent(object):
 
     def step(self, obs):
         # from the origin base.agent
+        self.counter += 1
         self.steps += 1
         self.reward += obs.reward
 
@@ -105,20 +106,32 @@ class SmartAgent(object):
                 reward += LOSS_UNIT_REWARD
 
             # discourage idle
-            if hp[0] is 45 and hp[1] is 45 and hp[2] is 45:
-                reward -= 1
+            if ((hp[0] == 45 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
+               (hp[0] == 0 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
+               (hp[0] == 45 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
+               (hp[0] == 45 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
+                (hp[0] == 0 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
+                (hp[0] == 0 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
+                (hp[0] == 45 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0) or
+               (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 45) or
+                (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0)
+            ):
+                reward = reward - 0.1 * self.counter
 
             # encourage to survive
             if 45 > hp[0] > 0:
-                reward += 0.1
+                reward += hp[0] / 3 * self.counter
 
             if 45 > hp[1] > 0:
-                reward += 0.1
+                reward += hp[1] / 3 * self.counter
 
             if 45 > hp[2] > 0:
-                reward += 0.1
+                reward += hp[2] / 3 * self.counter
 
-            # print(reward, self.steps)
+            if 45 > hp[3] > 0:
+                reward += hp[3] * self.counter
+
+            print(hp, reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 
@@ -284,6 +297,7 @@ class SmartAgent(object):
     # from the origin base.agent
     def reset(self):
         self.episodes += 1
+        self.counter = 0
 
 
 
