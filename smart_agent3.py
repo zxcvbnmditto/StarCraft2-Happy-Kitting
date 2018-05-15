@@ -55,8 +55,8 @@ smart_actions = [
     ACTION_SELECT_UNIT_3
 ]
 
-KILL_UNIT_REWARD = 300
-LOSS_UNIT_REWARD = -10
+KILL_UNIT_REWARD = 3
+LOSS_UNIT_REWARD = -1
 
 class SmartAgent(object):
     def __init__(self):
@@ -90,7 +90,7 @@ class SmartAgent(object):
         # from the origin base.agent
         self.counter += 1
         self.steps += 1
-        self.reward += obs.reward
+        # self.reward += obs.reward
 
         # time.sleep(0.2)
         current_state, hp, player_units, enemy_units, distance = self.extract_features(obs)
@@ -101,39 +101,62 @@ class SmartAgent(object):
         if self.previous_action is not None:
             reward = 0
 
-            if killed_unit_score > self.previous_killed_unit_score:
-                reward += KILL_UNIT_REWARD
+            # if killed_unit_score > self.previous_killed_unit_score:
+            #     reward += KILL_UNIT_REWARD
+            #
+            # if remaining_unit_count < 3:
+            #     reward += LOSS_UNIT_REWARD
+            #
+            # # discourage idle
+            # if ((hp[0] == 45 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
+            #    (hp[0] == 0 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
+            #    (hp[0] == 45 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
+            #    (hp[0] == 45 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
+            #     (hp[0] == 0 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
+            #     (hp[0] == 0 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
+            #     (hp[0] == 45 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0) or
+            #    (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 45) or
+            #     (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0)
+            # ):
+            #     reward = reward - 150
+            #
+            # # encourage to survive
+            # if 45 > hp[0] > 0:
+            #     reward += hp[0]
+            #
+            # if 45 > hp[1] > 0:
+            #     reward += hp[1]
+            #
+            # if 45 > hp[2] > 0:
+            #     reward += hp[2]
+            #
+            # if 45 > hp[3] > 0:
+            #     reward += hp[3] * 3
 
-            if remaining_unit_count < 3:
-                reward += LOSS_UNIT_REWARD
+            # If unit loses health
+            if ((hp[0] < 30) or (hp[1] < 30) or (hp[2] <30)):
+                reward -= 10
 
-            # discourage idle
-            if ((hp[0] == 45 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
-               (hp[0] == 0 and hp[1] == 45 and hp[2] == 45 and hp[3] == 0) or
-               (hp[0] == 45 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
-               (hp[0] == 45 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
-                (hp[0] == 0 and hp[1] == 0 and hp[2] == 45 and hp[3] == 0) or
-                (hp[0] == 0 and hp[1] == 45 and hp[2] == 0 and hp[3] == 0) or
-                (hp[0] == 45 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0) or
-               (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 45) or
-                (hp[0] == 0 and hp[1] == 0 and hp[2] == 0 and hp[3] == 0)
-            ):
-                reward = reward - 150
 
-            # encourage to survive
-            if 45 > hp[0] > 0:
-                reward += hp[0]
+            if distance[0] > 9:
+                self.reward -= 1
 
-            if 45 > hp[1] > 0:
-                reward += hp[1]
+            if distance[1] > 9:
+                self.reward -= 1
 
-            if 45 > hp[2] > 0:
-                reward += hp[2]
+            if distance[2] > 9:
+                self.reward -= 1
 
-            if 45 > hp[3] > 0:
-                reward += hp[3] * 3
+            if distance[0] <= 9:
+                self.reward + 20
 
-            #print(hp, reward, self.counter)
+            if distance[1] <= 9:
+                self.reward + 20
+
+            if distance[2] <= 9:
+                self.reward + 20
+
+            print(self.reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 
@@ -271,23 +294,7 @@ class SmartAgent(object):
 
         elif action == ACTION_ATTACK_RIGHT:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 83]])
-
-        elif action == ACTION_ATTACK_UP_LEFT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 0]])
-
-        elif action == ACTION_ATTACK_UP_RIGHT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 0]])
-
-        elif action == ACTION_ATTACK_DOWN_LEFT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 83]])
-
-        elif action == ACTION_ATTACK_DOWN_RIGHT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 83]])
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 41]])
 
         ###
         elif action == ACTION_ATTACK_UP:
@@ -304,23 +311,23 @@ class SmartAgent(object):
 
         elif action == ACTION_ATTACK_RIGHT:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 41]])
 
-        elif action == ACTION_ATTACK_UP_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
-
-        elif action == ACTION_ATTACK_UP_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
-
-        elif action == ACTION_ATTACK_DOWN_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
-
-        elif action == ACTION_ATTACK_DOWN_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
+        # elif action == ACTION_ATTACK_UP_LEFT:
+        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
+        #
+        # elif action == ACTION_ATTACK_UP_RIGHT:
+        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
+        #
+        # elif action == ACTION_ATTACK_DOWN_LEFT:
+        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+        #
+        # elif action == ACTION_ATTACK_DOWN_RIGHT:
+        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
 
         return actions.FunctionCall(_NO_OP, [])
 
@@ -333,6 +340,7 @@ class SmartAgent(object):
     def reset(self):
         self.episodes += 1
         self.counter = 0
+        self.reward = 0
 
 
 

@@ -11,8 +11,8 @@ class DeepQNetwork(object):
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=300,
-            memory_size=500,
-            batch_size=32,
+            memory_size=50000,
+            batch_size=3200,
             e_greedy_increment=None,
             output_graph=False,
     ):
@@ -135,6 +135,7 @@ class DeepQNetwork(object):
                 self.s_: batch_memory[:, -self.n_features:],
             })
 
+        print(cost)
         self.cost_his.append(cost)
 
         # increasing epsilon
