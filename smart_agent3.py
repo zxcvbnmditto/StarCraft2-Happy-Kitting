@@ -12,6 +12,8 @@ _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
+_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
@@ -67,7 +69,7 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            17, # one of the most important data that needs to be update # 17 or 7
+            7, # one of the most important data that needs to be update # 17 or 7
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
@@ -171,7 +173,7 @@ class SmartAgent(object):
         distance = np.array(distance).flatten()
 
         # combine all features horizontally
-        current_state = np.hstack((hp, distance, feature1, feature2))
+        current_state = np.hstack((hp, distance))
 
         return current_state, hp, player_units, enemy_units, distance
 
@@ -236,9 +238,9 @@ class SmartAgent(object):
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
 
-        # elif action == ACTION_SELECT_ARMY:
-        #   if _SELECT_ARMY in obs.observation['available_actions']:
-        #        return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
+        elif action == ACTION_SELECT_ARMY:
+           if _SELECT_ARMY in obs.observation['available_actions']:
+                return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
 
         elif action == ACTION_SELECT_UNIT_1:
             if _SELECT_POINT in obs.observation['available_actions']:
@@ -286,6 +288,39 @@ class SmartAgent(object):
         elif action == ACTION_ATTACK_DOWN_RIGHT:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 83]])
+
+        ###
+        elif action == ACTION_ATTACK_UP:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
+
+        elif action == ACTION_ATTACK_DOWN:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 83]])
+
+        elif action == ACTION_ATTACK_LEFT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 41]])
+
+        elif action == ACTION_ATTACK_RIGHT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+
+        elif action == ACTION_ATTACK_UP_LEFT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
+
+        elif action == ACTION_ATTACK_UP_RIGHT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
+
+        elif action == ACTION_ATTACK_DOWN_LEFT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+
+        elif action == ACTION_ATTACK_DOWN_RIGHT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
 
         return actions.FunctionCall(_NO_OP, [])
 
