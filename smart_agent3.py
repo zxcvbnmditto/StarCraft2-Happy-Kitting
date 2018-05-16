@@ -27,6 +27,7 @@ _UNIT_HEALTH = 2
 _UNIT_X = 12
 _UNIT_Y = 13
 _UNIT_RADIUS = 15 # find range
+_UNIT_HEALTH_RATIO = 7
 
 _NOT_QUEUED = [0]
 _QUEUED = [1]
@@ -96,37 +97,17 @@ class SmartAgent(object):
         # from the origin base.agent
         self.counter += 1
         self.steps += 1
-        # self.reward += obs.reward
 
-        # time.sleep(0.2)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance = self.extract_features(obs)
 
         killed_unit_score = obs.observation['score_cumulative'][5]
-        remaining_unit_count = obs.observation['multi_select'].shape[0]
+        remaining_unit_count = obs.observation['player'][8]
 
         if self.previous_action is not None:
-            reward = 0
+            reward = self.get_reward(obs, distance, player_hp, enemy_hp)
 
-            if distance[0] > 9:
-                self.reward -= 1
-
-            if distance[1] > 9:
-                self.reward -= 1
-
-            if distance[2] > 9:
-                self.reward -= 1
-
-            if distance[0] <= 9:
-                self.reward + 20
-
-            if distance[1] <= 9:
-                self.reward + 20
-
-            if distance[2] <= 9:
-                self.reward + 20
-
-            # print(self.reward, self.counter)
-            self.dqn.store_transition(np.array(self.previous_state), self.previous_action, self.reward, np.array(current_state))
+            print(reward, self.counter)
+            self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 
         rl_action = self.dqn.choose_action(np.array(current_state))
@@ -135,11 +116,38 @@ class SmartAgent(object):
         self.previous_killed_unit_score = killed_unit_score
         self.previous_state = current_state
         self.previous_action = rl_action
+        self.previous_enemy_hp = enemy_hp
 
         return self.perform_action(obs, smart_action, player_loc)
 
-    def test(self, obs):
-        print(obs.observation['unit_layer'])
+    def get_reward(self, obs, distance, player_hp, enemy_hp):
+        reward = 0
+
+        # give reward if dealing damage on enemy
+        for i in range(0, len(enemy_hp)):
+            if self.previous_enemy_hp[i] > enemy_hp[i]:
+                reward += 1
+
+        if distance[0] > 9:
+            reward -= 1
+
+        if distance[1] > 9:
+            reward -= 1
+
+        if distance[2] > 9:
+            reward -= 1
+
+        if distance[0] <= 9:
+            reward += 20
+
+        if distance[1] <= 9:
+            reward += 20
+
+        if distance[2] <= 9:
+            reward += 20
+
+        return reward
+
 
     # extract all the desired features as inputs for the DQN
     def extract_features(self, obs):
@@ -165,16 +173,16 @@ class SmartAgent(object):
                 player_hp.append(var[i][_UNIT_HEALTH])
                 player_unit_count += 1
 
-        #print()
-
+        # append if necessary
         for i in range(player_unit_count, 3):
             player.append((-1, -1))
-            player_hp.append(-1)
+            player_hp.append(0)
 
         for i in range(enemy_unit_count, 2):
             enemy.append((-1, -1))
-            enemy_hp.append(-1)
+            enemy_hp.append(0)
 
+        # get distance
         min_distance = [100000, 100000, 100000]
 
         for i in range(0, player_unit_count):
@@ -193,9 +201,7 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        # current_state = np.hstack((feature1, feature2, feature3, feature4, min_distance))
-        current_state = np.hstack((enemy_hp, player_hp, feature3, feature4, min_distance))
-        # print(current_state)
+        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
 
         return current_state, feature1, feature2, enemy, player, feature5
 
@@ -235,11 +241,11 @@ class SmartAgent(object):
 
         elif action == ACTION_ATTACK_LEFT:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 41]])
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 30]])
 
         elif action == ACTION_ATTACK_RIGHT:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 41]])
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 30]])
 
         ###
         elif action == ACTION_ATTACK_UP:
@@ -252,11 +258,11 @@ class SmartAgent(object):
 
         elif action == ACTION_ATTACK_LEFT:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 41]])
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 36]])
 
         elif action == ACTION_ATTACK_RIGHT:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 41]])
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 36]])
 
         # elif action == ACTION_ATTACK_UP_LEFT:
         #     if _MOVE_SCREEN in obs.observation["available_actions"]:
