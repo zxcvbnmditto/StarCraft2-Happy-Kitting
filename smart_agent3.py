@@ -1,11 +1,9 @@
 import numpy as np
-import tensorflow as tf
 import math
 from algorithms.dqn import DeepQNetwork
 
 from pysc2.lib import actions
 from pysc2.lib import features
-from sklearn.cluster import KMeans
 
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
