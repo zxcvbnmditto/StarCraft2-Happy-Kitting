@@ -135,7 +135,7 @@ class DeepQNetwork(object):
                 self.s_: batch_memory[:, -self.n_features:],
             })
 
-        print(cost)
+        # print(cost)
         self.cost_his.append(cost)
 
         # increasing epsilon

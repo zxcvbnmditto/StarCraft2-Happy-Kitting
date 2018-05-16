@@ -23,12 +23,6 @@ import threading
 
 from future.builtins import range  # pylint: disable=redefined-builtin
 
-# from pysc2 import maps
-# from deepmind.pysc2.env import available_actions_printer
-# from deepmind.pysc2.env import run_loop
-# from deepmind.pysc2.env import sc2_env
-# from deepmind.pysc2.lib import stopwatch
-
 from pysc2 import maps
 from pysc2.env import available_actions_printer
 from pysc2.env import run_loop
@@ -75,7 +69,9 @@ def run_thread(agent_cls, map_name, visualize):
       game_steps_per_episode=FLAGS.game_steps_per_episode,
       feature_screen_size=FLAGS.screen_resolution,
       feature_minimap_size=FLAGS.minimap_resolution,
-      visualize=visualize) as env:
+      visualize=visualize,
+      use_feature_units=True
+  ) as env:
     env = available_actions_printer.AvailableActionsPrinter(env)
     agent = agent_cls()
 
@@ -89,7 +85,7 @@ def run_thread(agent_cls, map_name, visualize):
     # agent.dqn.save_model('models/agent_4', 1)
 
     # plot cost
-    agent.dqn.plot_cost()
+    # agent.dqn.plot_cost()
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
