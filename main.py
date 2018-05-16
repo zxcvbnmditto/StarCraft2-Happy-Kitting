@@ -39,7 +39,7 @@ flags.DEFINE_string("agent", "smart_agent3.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
-flags.DEFINE_string("map", 'HappyKiting3V2', "Name of a map to use.")
+flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
 
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")

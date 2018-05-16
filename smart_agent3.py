@@ -10,6 +10,7 @@ _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
+Attack_Attack_screen = actions.FUNCTIONS.Attack_Attack_screen.id
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
 
 
@@ -40,21 +41,30 @@ ACTION_ATTACK_UP_LEFT = 'attackupleft'
 ACTION_ATTACK_UP_RIGHT = 'attackupright'
 ACTION_ATTACK_DOWN_LEFT = 'attackdownleft'
 ACTION_ATTACK_DOWN_RIGHT = 'attackdownright'
+MOVE_UP = 'moveup'
+MOVE_DOWN = 'movedown'
+MOVE_LEFT = 'moveleft'
+MOVE_RIGHT = 'moveright'
+MOVE_UP_LEFT = 'moveupleft'
+MOVE_DOWN_LEFT = 'movedownleft'
+MOVE_UP_RIGHT = 'moveupright'
+MOVE_DOWN_RIGHT = 'movedownright'
 ACTION_SELECT_UNIT_1 = 'selectunit1'
 ACTION_SELECT_UNIT_2 = 'selectunit2'
 ACTION_SELECT_UNIT_3 = 'selectunit3'
+ATTACK_TARGET = 'attacktarget'
 
 smart_actions = [
     ACTION_DO_NOTHING,
-    ACTION_SELECT_ARMY,
-    ACTION_ATTACK_UP,
-    ACTION_ATTACK_DOWN,
-    ACTION_ATTACK_LEFT,
-    ACTION_ATTACK_RIGHT,
-    ACTION_ATTACK_UP_LEFT,
-    ACTION_ATTACK_UP_RIGHT,
-    ACTION_ATTACK_DOWN_LEFT,
-    ACTION_ATTACK_DOWN_RIGHT,
+    ATTACK_TARGET,
+    MOVE_UP,
+    MOVE_DOWN,
+    MOVE_LEFT,
+    MOVE_RIGHT,
+    MOVE_UP_LEFT,
+    MOVE_DOWN_LEFT,
+    MOVE_UP_RIGHT,
+    MOVE_DOWN_RIGHT,
     ACTION_SELECT_UNIT_1,
     ACTION_SELECT_UNIT_2,
     ACTION_SELECT_UNIT_3
@@ -104,7 +114,7 @@ class SmartAgent(object):
         if self.previous_action is not None:
             reward = self.get_reward(obs, distance, player_hp, enemy_hp)
 
-            print(reward, self.counter)
+            # print(reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 
@@ -116,7 +126,7 @@ class SmartAgent(object):
         self.previous_action = rl_action
         self.previous_enemy_hp = enemy_hp
 
-        return self.perform_action(obs, smart_action, player_loc)
+        return self.perform_action(obs, smart_action, player_loc, enemy_loc)
 
     def get_reward(self, obs, distance, player_hp, enemy_hp):
         reward = 0
@@ -126,23 +136,26 @@ class SmartAgent(object):
             if self.previous_enemy_hp[i] > enemy_hp[i]:
                 reward += 1
 
-        if distance[0] > 9:
+        if distance[0] > 10:
             reward -= 1
+        elif 10 >= distance[0] >= 5:
+            reward += 20
+        else:
+            reward -= 30
 
-        if distance[1] > 9:
+        if distance[1] > 10:
             reward -= 1
+        elif 10 >= distance[1] >= 5:
+            reward += 20
+        else:
+            reward -= 30
 
-        if distance[2] > 9:
+        if distance[2] > 10:
             reward -= 1
-
-        if distance[0] <= 9:
+        elif 10 >= distance[2] >= 5:
             reward += 20
-
-        if distance[1] <= 9:
-            reward += 20
-
-        if distance[2] <= 9:
-            reward += 20
+        else:
+            reward -= 30
 
         return reward
 
@@ -204,7 +217,7 @@ class SmartAgent(object):
         return current_state, feature1, feature2, enemy, player, feature5
 
         # make the desired action calculated by DQN
-    def perform_action(self, obs, action, unit_locs):
+    def perform_action(self, obs, action, unit_locs, enemy_locs):
         unit_count = obs.observation['player'][8]
 
         if action == ACTION_DO_NOTHING:
@@ -229,54 +242,60 @@ class SmartAgent(object):
                 if unit_count >= 3:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
 
-        elif action == ACTION_ATTACK_UP:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
+        # elif action == ACTION_ATTACK_UP:
+        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
+        #
+        # elif action == ACTION_ATTACK_DOWN:
+        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 83]])
+        #
+        # elif action == ACTION_ATTACK_LEFT:
+        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 30]])
+        #
+        # elif action == ACTION_ATTACK_RIGHT:
+        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
+        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 30]])
 
-        elif action == ACTION_ATTACK_DOWN:
+        #-----------------------
+        elif action == ATTACK_TARGET:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 83]])
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
 
-        elif action == ACTION_ATTACK_LEFT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 30]])
+        # ------------------------
 
-        elif action == ACTION_ATTACK_RIGHT:
-            if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 30]])
-
-        ###
-        elif action == ACTION_ATTACK_UP:
+        elif action == MOVE_UP:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
 
-        elif action == ACTION_ATTACK_DOWN:
+        elif action == MOVE_DOWN:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 83]])
 
-        elif action == ACTION_ATTACK_LEFT:
+        elif action == MOVE_LEFT:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 36]])
 
-        elif action == ACTION_ATTACK_RIGHT:
+        elif action == MOVE_RIGHT:
             if _MOVE_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 36]])
 
-        # elif action == ACTION_ATTACK_UP_LEFT:
-        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
-        #
-        # elif action == ACTION_ATTACK_UP_RIGHT:
-        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
-        #
-        # elif action == ACTION_ATTACK_DOWN_LEFT:
-        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
-        #
-        # elif action == ACTION_ATTACK_DOWN_RIGHT:
-        #     if _MOVE_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
+        elif action == MOVE_UP_LEFT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
+
+        elif action == MOVE_UP_RIGHT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
+
+        elif action == MOVE_DOWN_LEFT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+
+        elif action == MOVE_DOWN_RIGHT:
+            if _MOVE_SCREEN in obs.observation["available_actions"]:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
 
         return actions.FunctionCall(_NO_OP, [])
 
