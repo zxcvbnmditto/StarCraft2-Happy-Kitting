@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import time
 from algorithms.dqn import DeepQNetwork
 
 from pysc2.lib import actions
@@ -27,6 +28,7 @@ _UNIT_X = 12
 _UNIT_Y = 13
 _UNIT_RADIUS = 15 # find range
 _UNIT_HEALTH_RATIO = 7
+_UNIT_IS_SELECTED = 17
 
 _NOT_QUEUED = [0]
 _QUEUED = [1]
@@ -106,10 +108,10 @@ class SmartAgent(object):
         self.counter += 1
         self.steps += 1
 
-        current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance = self.extract_features(obs)
+        current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected = self.extract_features(obs)
 
-        killed_unit_score = obs.observation['score_cumulative'][5]
-        remaining_unit_count = obs.observation['player'][8]
+        if self.counter == 1:
+            return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, player_loc[0]])
 
         if self.previous_action is not None:
             reward = self.get_reward(obs, distance, player_hp, enemy_hp)
@@ -121,12 +123,11 @@ class SmartAgent(object):
         rl_action = self.dqn.choose_action(np.array(current_state))
         smart_action = smart_actions[rl_action]
 
-        self.previous_killed_unit_score = killed_unit_score
         self.previous_state = current_state
         self.previous_action = rl_action
         self.previous_enemy_hp = enemy_hp
 
-        return self.perform_action(obs, smart_action, player_loc, enemy_loc)
+        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected)
 
     def get_reward(self, obs, distance, player_hp, enemy_hp):
         reward = 0
@@ -171,6 +172,9 @@ class SmartAgent(object):
         enemy_hp = [] # size 2
         player_hp = [] # size 3
 
+        # record the selected army
+        is_selected = []
+
         enemy_unit_count = 0
         player_unit_count = 0
 
@@ -182,12 +186,14 @@ class SmartAgent(object):
             else:
                 player.append((var[i][_UNIT_X], var[i][_UNIT_Y]))
                 player_hp.append(var[i][_UNIT_HEALTH])
+                is_selected.append(var[i][_UNIT_IS_SELECTED])
                 player_unit_count += 1
 
         # append if necessary
         for i in range(player_unit_count, 3):
             player.append((-1, -1))
             player_hp.append(0)
+            is_selected.append(-1)
 
         for i in range(enemy_unit_count, 2):
             enemy.append((-1, -1))
@@ -214,18 +220,24 @@ class SmartAgent(object):
         # combine all features horizontally
         current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
 
-        return current_state, feature1, feature2, enemy, player, feature5
+        return current_state, feature1, feature2, enemy, player, min_distance, is_selected
 
         # make the desired action calculated by DQN
-    def perform_action(self, obs, action, unit_locs, enemy_locs):
+    def perform_action(self, obs, action, unit_locs, enemy_locs, selected):
         unit_count = obs.observation['player'][8]
+
+        index = -1
+
+        for i in range(0, 3):
+            if selected[i] == 1:
+                index = i
 
         if action == ACTION_DO_NOTHING:
             return actions.FunctionCall(_NO_OP, [])
 
-        elif action == ACTION_SELECT_ARMY:
-           if _SELECT_ARMY in obs.observation['available_actions']:
-                return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
+        # elif action == ACTION_SELECT_ARMY:
+        #    if _SELECT_ARMY in obs.observation['available_actions']:
+        #         return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
 
         elif action == ACTION_SELECT_UNIT_1:
             if _SELECT_POINT in obs.observation['available_actions']:
@@ -242,60 +254,43 @@ class SmartAgent(object):
                 if unit_count >= 3:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
 
-        # elif action == ACTION_ATTACK_UP:
-        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
-        #
-        # elif action == ACTION_ATTACK_DOWN:
-        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [41, 83]])
-        #
-        # elif action == ACTION_ATTACK_LEFT:
-        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [0, 30]])
-        #
-        # elif action == ACTION_ATTACK_RIGHT:
-        #     if _ATTACK_SCREEN in obs.observation["available_actions"]:
-        #         return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, [83, 30]])
-
         #-----------------------
         elif action == ATTACK_TARGET:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
                 return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
-
         # ------------------------
 
         elif action == MOVE_UP:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 0]])  # x,y => col,row
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0], unit_locs[index][1] - 4]])  # x,y => col,row
 
         elif action == MOVE_DOWN:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [41, 83]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0], unit_locs[index][1] + 4]])
 
         elif action == MOVE_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 36]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] - 4, unit_locs[index][1]]])
 
         elif action == MOVE_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 36]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] + 4, unit_locs[index][1]]])
 
         elif action == MOVE_UP_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 0]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] - 2, unit_locs[index][1] - 2]])
 
         elif action == MOVE_UP_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 0]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] + 2, unit_locs[index][1] - 2]])
 
         elif action == MOVE_DOWN_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [0, 83]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] - 2, unit_locs[index][1] + 2]])
 
         elif action == MOVE_DOWN_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [83, 83]])
+            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [unit_locs[index][0] - 2, unit_locs[index][1] + 2]])
 
         return actions.FunctionCall(_NO_OP, [])
 
