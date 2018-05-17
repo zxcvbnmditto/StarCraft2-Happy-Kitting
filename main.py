@@ -76,13 +76,13 @@ def run_thread(agent_cls, map_name, visualize):
     agent = agent_cls()
 
     # restore the model
-    # agent.dqn.load_model('models')
+    # agent.dqn.load_model('models/a3_m2v1')
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    # agent.dqn.save_model('models/agent_4', 1)
+    # agent.dqn.save_model('models/a3_m2v1', 1)
 
     # plot cost
     # agent.dqn.plot_cost()

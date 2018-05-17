@@ -11,8 +11,8 @@ class DeepQNetwork(object):
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=300,
-            memory_size=50000,
-            batch_size=3200,
+            memory_size=500,
+            batch_size=32,
             e_greedy_increment=None,
             output_graph=False,
     ):
@@ -65,14 +65,14 @@ class DeepQNetwork(object):
 
         # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            e1 = tf.layers.dense(self.s, 12, tf.nn.relu, kernel_initializer=w_initializer,
+            e1 = tf.layers.dense(self.s, 6, tf.nn.relu, kernel_initializer=w_initializer,
                                  bias_initializer=b_initializer, name='e1')
             self.q_eval = tf.layers.dense(e1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='q')
 
         # ------------------ build target_net ------------------
         with tf.variable_scope('target_net'):
-            t1 = tf.layers.dense(self.s_, 12, tf.nn.relu, kernel_initializer=w_initializer,
+            t1 = tf.layers.dense(self.s_, 6, tf.nn.relu, kernel_initializer=w_initializer,
                                  bias_initializer=b_initializer, name='t1')
             self.q_next = tf.layers.dense(t1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='t2')
