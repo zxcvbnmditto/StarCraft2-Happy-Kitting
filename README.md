@@ -1,13 +1,24 @@
+#### About
+This is a project of creating a Starcraft 2 bot applying reinforcement learning <br>
+
+smart_agent.py is the base structure of all agents <br>
+smart_agent2.py is designed to run the 3V2 map <br>
+smart_agent3.py is designed to run the 2V1 map <br>
+
+All the mini maps used in this project can be found in the maps folder <br>
+
 #### Environment:
 >Python 3 <br>
 >Tensorflow 1.7.0
 
 #### Installation
 1. Clone this repository
->git clone https://github.com/zxcvbnmditto/StarCraft2-Happy-Kitting.git
+```
+git clone https://github.com/zxcvbnmditto/StarCraft2-Happy-Kitting.git
+```
 2. Install the required packages if needed using pip
 ```
-pip install <package-name>
+pip3 install <package-name>
 ```
 3. Move the HappyKiting3V2.SC2Map to the Starcraft 2 minimap folder. 
 ```
@@ -26,4 +37,4 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 #### Coming up:
 1. Test the performance of the agent and update the action, reward, and extracted features if needed
 2. Training smart_agent3
-
+3. Apply Batch Normalization & modified the DQN network structure

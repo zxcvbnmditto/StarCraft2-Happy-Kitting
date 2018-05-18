@@ -93,8 +93,8 @@ class SmartAgent(object):
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=200,
-            memory_size=50000,
-            batch_size=1000,
+            memory_size=5000,
+            batch_size=32,
             e_greedy_increment=None,
             output_graph=True
         )
@@ -119,7 +119,7 @@ class SmartAgent(object):
         if self.previous_action is not None:
             reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count)
 
-            print(reward, self.counter)
+            # print(reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
             self.dqn.learn()
 

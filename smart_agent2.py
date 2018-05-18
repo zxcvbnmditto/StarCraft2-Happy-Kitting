@@ -53,11 +53,13 @@ MOVE_DOWN_RIGHT = 'movedownright'
 ACTION_SELECT_UNIT_1 = 'selectunit1'
 ACTION_SELECT_UNIT_2 = 'selectunit2'
 ACTION_SELECT_UNIT_3 = 'selectunit3'
-ATTACK_TARGET = 'attacktarget'
+ATTACK_TARGET_1 = 'attacktarget1'
+ATTACK_TARGET_2 = 'attacktarget2'
 
 smart_actions = [
     ACTION_DO_NOTHING,
-    ATTACK_TARGET,
+    ATTACK_TARGET_1,
+    ATTACK_TARGET_2,
     MOVE_UP,
     MOVE_DOWN,
     MOVE_LEFT,
@@ -71,8 +73,12 @@ smart_actions = [
     ACTION_SELECT_UNIT_3
 ]
 
+DEFAULT_ENEMY_COUNT = 2
+DEFAULT_PLAYER_COUNT = 3
+
 KILL_UNIT_REWARD = 5
 LOSS_UNIT_REWARD = -1
+
 
 class SmartAgent(object):
     def __init__(self):
@@ -89,8 +95,8 @@ class SmartAgent(object):
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
-            replace_target_iter=300,
-            memory_size=500,
+            replace_target_iter=200,
+            memory_size=5000,
             batch_size=32,
             e_greedy_increment=None,
             output_graph=True
@@ -108,13 +114,13 @@ class SmartAgent(object):
         self.steps += 1
 
         # time.sleep(0.1)
-        current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected = self.extract_features(obs)
+        current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
         if self.counter == 1:
             return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, player_loc[0]])
 
         if self.previous_action is not None:
-            reward = self.get_reward(obs, distance, player_hp, enemy_hp)
+            reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count)
 
             # print(reward, self.counter)
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
@@ -127,20 +133,22 @@ class SmartAgent(object):
         self.previous_action = rl_action
         self.previous_enemy_hp = enemy_hp
 
-        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected)
+        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected, player_count, enemy_count)
 
-    def get_reward(self, obs, distance, player_hp, enemy_hp):
+    def get_reward(self, obs, distance, player_hp, enemy_hp, player_count, enemy_count):
         reward = 0
 
         # give reward if dealing damage on enemy
-        for i in range(0, len(enemy_hp)):
+        for i in range(0, enemy_count):
             if self.previous_enemy_hp[i] > enemy_hp[i]:
                 reward += 1
 
-        army_count = obs.observation['player'][8]
+        # reward increases if kills opponent's army
+        kill_army_count = DEFAULT_ENEMY_COUNT - enemy_count
+        reward += kill_army_count * KILL_UNIT_REWARD
 
-        lost_army_count = 2 - army_count
-
+        # reward decreases if loses army
+        lost_army_count = DEFAULT_PLAYER_COUNT - player_count
         reward += lost_army_count * LOSS_UNIT_REWARD
 
         if distance[0] > 16:
@@ -148,41 +156,38 @@ class SmartAgent(object):
         elif 16 >= distance[0] >= 9:
             reward += 2
         else:
-            reward -= 3
+            reward -= 1
 
         if distance[1] > 16:
             reward -= 1
         elif 16 >= distance[1] >= 9:
             reward += 2
         else:
-            reward -= 3
+            reward -= 1
 
-        # if distance[2] > 16:
-        #     reward -= 1
-        # elif 16 >= distance[2] >= 9:
-        #     reward += 2
-        # else:
-        #     reward -= 3
+        if distance[2] > 16:
+            reward -= 1
+        elif 16 >= distance[2] >= 9:
+            reward += 2
+        else:
+            reward -= 1
 
         return reward
-
 
     # extract all the desired features as inputs for the DQN
     def extract_features(self, obs):
         var = obs.observation['feature_units']
         # get units' location and distance
-        enemy = [] # size 2
-        player = [] # size 3
+        enemy, player = [], []
 
         # get health
-        enemy_hp = [] # size 2
-        player_hp = [] # size 3
+        enemy_hp, player_hp = [], []
 
         # record the selected army
         is_selected = []
 
-        enemy_unit_count = 0
-        player_unit_count = 0
+        # unit_count
+        enemy_unit_count, player_unit_count = 0, 0
 
         for i in range(0, var.shape[0]):
             if var[i][_UNIT_ALLIANCE] == _PLAYER_HOSTILE:
@@ -196,12 +201,12 @@ class SmartAgent(object):
                 player_unit_count += 1
 
         # append if necessary
-        for i in range(player_unit_count, 3):
+        for i in range(player_unit_count, DEFAULT_PLAYER_COUNT):
             player.append((-1, -1))
             player_hp.append(0)
             is_selected.append(-1)
 
-        for i in range(enemy_unit_count, 2):
+        for i in range(enemy_unit_count, DEFAULT_ENEMY_COUNT):
             enemy.append((-1, -1))
             enemy_hp.append(0)
 
@@ -226,47 +231,44 @@ class SmartAgent(object):
         # combine all features horizontally
         current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
 
-        return current_state, feature1, feature2, enemy, player, min_distance, is_selected
+        return current_state, feature1, feature2, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
         # make the desired action calculated by DQN
-    def perform_action(self, obs, action, unit_locs, enemy_locs, selected):
-        unit_count = obs.observation['player'][8]
-
+    def perform_action(self, obs, action, unit_locs, enemy_locs, selected, player_count, enemy_count):
         index = -1
 
-        for i in range(0, 3):
+        for i in range(0, DEFAULT_PLAYER_COUNT):
             if selected[i] == 1:
                 index = i
 
         x = unit_locs[index][0]
         y = unit_locs[index][1]
 
-        if action == ACTION_DO_NOTHING:
-            return actions.FunctionCall(_NO_OP, [])
-
-        # elif action == ACTION_SELECT_ARMY:
-        #    if _SELECT_ARMY in obs.observation['available_actions']:
-        #         return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
-
-        elif action == ACTION_SELECT_UNIT_1:
+        if action == ACTION_SELECT_UNIT_1:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if unit_count >= 1:
+                if player_count >= 1:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
 
         elif action == ACTION_SELECT_UNIT_2:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if unit_count >= 2:
+                if player_count >= 2:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[1]])
 
-        # elif action == ACTION_SELECT_UNIT_3:
-        #     if _SELECT_POINT in obs.observation['available_actions']:
-        #         if unit_count >= 3:
-        #             return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
+        elif action == ACTION_SELECT_UNIT_3:
+            if _SELECT_POINT in obs.observation['available_actions']:
+                if player_count >= 3:
+                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[2]])
 
         #-----------------------
-        elif action == ATTACK_TARGET:
+        elif action == ATTACK_TARGET_1:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
+                if enemy_count >= 1:
+                    return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
+
+        elif action == ATTACK_TARGET_2:
+            if _ATTACK_SCREEN in obs.observation["available_actions"]:
+                if enemy_count >= 2:
+                    return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[1]])  # x,y => col,row
         # ------------------------
 
         elif action == MOVE_UP:
@@ -405,6 +407,7 @@ class SmartAgent(object):
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
+        self.previous_action = 0
         return actions.FunctionCall(_NO_OP, [])
 
     # from the origin base.agent

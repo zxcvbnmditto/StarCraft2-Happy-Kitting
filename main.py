@@ -35,11 +35,11 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "smart_agent3.SmartAgent",
+flags.DEFINE_string("agent", "smart_agent2.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
-flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
+flags.DEFINE_string("map", 'HK3V2', "Name of a map to use.")
 
 
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")

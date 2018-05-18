@@ -39,6 +39,7 @@ class DeepQNetwork(object):
         t_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_net')
         e_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='eval_net')
 
+
         with tf.variable_scope('soft_replacement'):
             self.target_replace_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
@@ -50,7 +51,6 @@ class DeepQNetwork(object):
 
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
-        # self.saver.save(self.sess, 'testing_models', global_step=100)
         self.cost_his = []
         self.memory_counter = 0
 
@@ -61,20 +61,28 @@ class DeepQNetwork(object):
         self.r = tf.placeholder(tf.float32, [None, ], name='r')  # input Reward
         self.a = tf.placeholder(tf.int32, [None, ], name='a')  # input Action
 
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
         w_initializer, b_initializer = tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)
 
         # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            e1 = tf.layers.dense(self.s, 6, tf.nn.relu, kernel_initializer=w_initializer,
-                                 bias_initializer=b_initializer, name='e1')
-            self.q_eval = tf.layers.dense(e1, self.n_actions, kernel_initializer=w_initializer,
+            e_z1 = tf.layers.dense(self.s, 6, activation=None, kernel_initializer=w_initializer, bias_initializer=b_initializer, name='e1')
+            e_bn1 = tf.layers.batch_normalization(e_z1, training=True)
+            e_a1 = tf.nn.relu(e_bn1)
+            ### output layer
+            self.q_eval = tf.layers.dense(e_a1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='q')
 
+
         # ------------------ build target_net ------------------
+
         with tf.variable_scope('target_net'):
-            t1 = tf.layers.dense(self.s_, 6, tf.nn.relu, kernel_initializer=w_initializer,
-                                 bias_initializer=b_initializer, name='t1')
-            self.q_next = tf.layers.dense(t1, self.n_actions, kernel_initializer=w_initializer,
+            t_z1 = tf.layers.dense(self.s_, 6, activation=None, kernel_initializer=w_initializer, bias_initializer=b_initializer, name='t1')
+            t_bn1 = tf.layers.batch_normalization(t_z1, training=True)
+            t_a1 = tf.nn.relu(t_bn1)
+            ### output layer
+            self.q_next = tf.layers.dense(t_a1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='t2')
 
         with tf.variable_scope('q_target'):
@@ -86,7 +94,8 @@ class DeepQNetwork(object):
         with tf.variable_scope('loss'):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval_wrt_a, name='TD_error'))
         with tf.variable_scope('train'):
-            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+            with tf.control_dependencies(update_ops):
+                self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
@@ -102,11 +111,11 @@ class DeepQNetwork(object):
     def choose_action(self, observation):
         # to have batch dimension when feed into tf placeholder
         observation = observation[np.newaxis, :]
-        # print(observation.shape)
 
         if np.random.uniform() < self.epsilon:
             # forward feed the observation and get q value for every actions
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
+
             action = np.argmax(actions_value)
         else:
             action = np.random.randint(0, self.n_actions)
@@ -134,6 +143,8 @@ class DeepQNetwork(object):
                 self.r: batch_memory[:, self.n_features + 1],
                 self.s_: batch_memory[:, -self.n_features:],
             })
+
+        # print(batch_memory[:, :self.n_features])
 
         # print(cost)
         self.cost_his.append(cost)
