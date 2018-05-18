@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class DeepQNetwork(object):
@@ -52,6 +53,7 @@ class DeepQNetwork(object):
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
         self.cost_his = []
+        self.reward = []
         self.memory_counter = 0
 
     def _build_net(self):
@@ -101,6 +103,7 @@ class DeepQNetwork(object):
         if not hasattr(self, 'memory_counter'):
             self.memory_counter = 0
 
+        self.reward.append(r)
         # transform a and r into 1D array
         transition = np.hstack((s, [a], [r], s_))
         # replace the old memory with new memory
@@ -153,11 +156,20 @@ class DeepQNetwork(object):
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
 
-    def plot_cost(self):
-        import matplotlib.pyplot as plt
+    def plot_reward(self, map, step, save):
+        plt.plot(np.arange(len(self.reward)), self.reward)
+        plt.ylabel('Reward')
+        plt.xlabel('training steps')
+        if save:
+            plt.savefig('pics/' + map + '/' + str(step) + '/reward.png')
+        plt.show()
+
+    def plot_cost(self, map, step, save):
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
         plt.ylabel('Cost')
         plt.xlabel('training steps')
+        if save:
+            plt.savefig('pics/' + map + '/' + str(step) + '/cost.png')
         plt.show()
 
     def save_model(self, path, count):
