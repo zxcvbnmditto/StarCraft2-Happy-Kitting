@@ -33,15 +33,6 @@ _NOT_QUEUED = [0]
 _QUEUED = [1]
 
 ACTION_DO_NOTHING = 'donothing'
-ACTION_SELECT_ARMY = 'selectarmy'
-ACTION_ATTACK_UP = 'attackup'
-ACTION_ATTACK_DOWN = 'attackdown'
-ACTION_ATTACK_LEFT = 'attackleft'
-ACTION_ATTACK_RIGHT = 'attackright'
-ACTION_ATTACK_UP_LEFT = 'attackupleft'
-ACTION_ATTACK_UP_RIGHT = 'attackupright'
-ACTION_ATTACK_DOWN_LEFT = 'attackdownleft'
-ACTION_ATTACK_DOWN_RIGHT = 'attackdownright'
 MOVE_UP = 'moveup'
 MOVE_DOWN = 'movedown'
 MOVE_LEFT = 'moveleft'
@@ -52,20 +43,14 @@ MOVE_UP_RIGHT = 'moveupright'
 MOVE_DOWN_RIGHT = 'movedownright'
 ACTION_SELECT_UNIT_1 = 'selectunit1'
 ACTION_SELECT_UNIT_2 = 'selectunit2'
-ACTION_SELECT_UNIT_3 = 'selectunit3'
 ATTACK_TARGET = 'attacktarget'
 
 smart_actions = [
-    ACTION_DO_NOTHING,
     ATTACK_TARGET,
     MOVE_UP,
     MOVE_DOWN,
     MOVE_LEFT,
     MOVE_RIGHT,
-    MOVE_UP_LEFT,
-    MOVE_DOWN_LEFT,
-    MOVE_UP_RIGHT,
-    MOVE_DOWN_RIGHT,
     ACTION_SELECT_UNIT_1,
     ACTION_SELECT_UNIT_2
 ]
@@ -320,76 +305,8 @@ class SmartAgent(object):
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
-        elif action == MOVE_UP_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x - 5
-                y = y - 5
-
-                if 0 > x:
-                    x = 0
-                elif x > 83:
-                    x = 83
-
-                if 0 > y:
-                    y = 0
-                elif y > 83:
-                    y = 83
-
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
-
-        elif action == MOVE_UP_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x + 5
-                y = y - 5
-
-                if 0 > x:
-                    x = 0
-                elif x > 83:
-                    x = 83
-
-                if 0 > y:
-                    y = 0
-                elif y > 83:
-                    y = 83
-
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
-
-        elif action == MOVE_DOWN_LEFT:
-            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x - 5
-                y = y + 5
-
-                if 0 > x:
-                    x = 0
-                elif x > 83:
-                    x = 83
-
-                if 0 > y:
-                    y = 0
-                elif y > 83:
-                    y = 83
-
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
-
-        elif action == MOVE_DOWN_RIGHT:
-            if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x - 5
-                y = y + 5
-
-                if 0 > x:
-                    x = 0
-                elif x > 83:
-                    x = 83
-
-                if 0 > y:
-                    y = 0
-                elif y > 83:
-                    y = 83
-
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
-
-        self.previous_action = 0
-        return actions.FunctionCall(_NO_OP, [])
+        self.previous_action = 5
+        return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
 
     # from the origin base.agent
     def setup(self, obs_spec, action_spec):
