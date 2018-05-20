@@ -1,9 +1,11 @@
 #### About
 This is a project of creating a Starcraft 2 bot applying reinforcement learning <br>
 
-smart_agent.py is the base structure of all agents <br>
-smart_agent2.py is designed to run the 3V2 map <br>
-smart_agent3.py is designed to run the 2V1 map <br>
+smart_agent.py is the base structure of all agents dqn<br>
+smart_agent2.py is designed to run the 3V2 mapusing dqn <br>
+smart_agent3.py is designed to run the 2V1 map using dqn<br>
+smart_agent4.py is designed to run the 3V1 map using dqn<br>
+smart_agent5.py will be designed to run the 3V1 map using ddpg <br>
 
 All the mini maps used in this project can be found in the maps folder <br>
 

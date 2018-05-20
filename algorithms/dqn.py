@@ -76,7 +76,6 @@ class DeepQNetwork(object):
             self.q_eval = tf.layers.dense(e_a1, self.n_actions, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='q')
 
-
         # ------------------ build target_net ------------------
 
         with tf.variable_scope('target_net'):
@@ -147,9 +146,7 @@ class DeepQNetwork(object):
                 self.s_: batch_memory[:, -self.n_features:],
             })
 
-        # print(batch_memory[:, :self.n_features])
 
-        # print(cost)
         self.cost_his.append(cost)
 
         # increasing epsilon

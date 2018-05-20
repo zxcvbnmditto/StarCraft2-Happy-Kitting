@@ -96,7 +96,7 @@ class SmartAgent(object):
         self.previous_action = None
         self.previous_state = None
 
-    def step(self, obs):
+    def step(self, obs, test):
         # from the origin base.agent
         self.counter += 1
         self.steps += 1
@@ -149,13 +149,16 @@ class SmartAgent(object):
             elif 10 <= enemy_hp[i] < 20:
                 reward += 5
 
-        # reward increases if kills opponent's army
-        kill_army_count = DEFAULT_ENEMY_COUNT - enemy_count
-        reward += kill_army_count * KILL_UNIT_REWARD
+        # # reward increases if kills opponent's army
+        # kill_army_count = DEFAULT_ENEMY_COUNT - enemy_count
+        # reward += kill_army_count * KILL_UNIT_REWARD
+        #
+        # # reward decreases if loses army
+        # lost_army_count = DEFAULT_PLAYER_COUNT - player_count
+        # reward += lost_army_count * LOSS_UNIT_REWARD
 
-        # reward decreases if loses army
-        lost_army_count = DEFAULT_PLAYER_COUNT - player_count
-        reward += lost_army_count * LOSS_UNIT_REWARD
+        # get killed and lost unit reward from the map
+        reward += obs.reward
 
         # # reward only player's unit maintains a certain distance with the enemy
         for i in range(0, DEFAULT_PLAYER_COUNT):
@@ -209,6 +212,7 @@ class SmartAgent(object):
         if enemy_unit_count == 0:
             self.win += 1
 
+        # print(enemy_hp)
 
         # get distance
         min_distance = [100000, 100000, 100000]
@@ -343,6 +347,7 @@ class SmartAgent(object):
 
     # from the origin base.agent
     def reset(self):
+        # time.sleep(10)
         self.episodes += 1
         self.reward = 0
         self.counter = 0

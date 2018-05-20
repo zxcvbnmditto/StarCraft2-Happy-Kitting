@@ -25,7 +25,8 @@ from future.builtins import range  # pylint: disable=redefined-builtin
 
 from pysc2 import maps
 from pysc2.env import available_actions_printer
-from pysc2.env import run_loop
+# from pysc2.env import run_loop
+import run_loop
 from pysc2.env import sc2_env
 from pysc2.lib import stopwatch
 
@@ -50,7 +51,7 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 1000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 100000, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 4, "Game steps per agent step.")
 
