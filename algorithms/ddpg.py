@@ -40,7 +40,7 @@ class Actor():
 
         # slowly update target_params
         self.soft_update = [
-            tf.assign(t, (1 - TAU) * t + TAU * e )
+            tf.assign(t, (1 - TAU) * t + TAU * e)
             for (t,e) in zip(self.target_a_params, self.a_params)
         ]
 

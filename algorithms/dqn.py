@@ -161,7 +161,7 @@ class DeepQNetwork(object):
         plt.ylabel('Reward')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/' + str(step) + '/reward.png')
+            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
         plt.show()
 
     def plot_cost(self, map, step, save):
@@ -169,7 +169,7 @@ class DeepQNetwork(object):
         plt.ylabel('Cost')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/' + str(step) + '/cost.png')
+            plt.savefig('pics/' + map + '/dqn' + '/cost.png')
         plt.show()
 
     def save_model(self, path, count):

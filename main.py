@@ -35,11 +35,12 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "smart_agent3.SmartAgent",
+flags.DEFINE_string("agent", "smart_agent4.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
-flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
+flags.DEFINE_string("map", 'HK3V1', "Name of a map to use.")
+flags.DEFINE_string("algorithm", 'dqn', "Name of algorithm to use.")
 
 
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
@@ -49,7 +50,7 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 1000, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 4, "Game steps per agent step.")
 
@@ -76,17 +77,19 @@ def run_thread(agent_cls, map_name, visualize):
     agent = agent_cls()
 
     # restore the model
-    # agent.dqn.load_model('models/' + map_name)
+    # agent.dqn.load_model('models/' + map_name + '/' + FLAGS.algorithm)
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    # agent.dqn.save_model('models/' + map_name, 1)
+    # agent.dqn.save_model('models/' + map_name + '/' + FLAGS.algorithm, 1)
 
     # plot cost and reward
+    print(agent.win)
     agent.dqn.plot_cost(map_name, FLAGS.step_mul, save=False)
     agent.dqn.plot_reward(map_name, FLAGS.step_mul, save=False)
+
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
