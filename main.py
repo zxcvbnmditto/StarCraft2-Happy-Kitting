@@ -89,10 +89,8 @@ def run_thread(agent_cls, map_name, visualize):
     # plot cost and reward
     # print(agent.win)
     # agent.dqn.plot_cost(map_name, save=False)
-    agent.dqn.plot_reward(map_name, save=False)
-    agent.plot_hp(map_name, save=False)
-
-
+    # agent.dqn.plot_reward(map_name, save=False)
+    # agent.plot_hp(map_name, save=False)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)

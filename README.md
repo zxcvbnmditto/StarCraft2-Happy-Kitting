@@ -18,16 +18,22 @@ All the mini maps used in this project can be found in the maps folder <br>
 ```
 git clone https://github.com/zxcvbnmditto/StarCraft2-Happy-Kitting.git
 ```
-2. Install the required packages if needed using pip
+2. Install pysc2 manually (pysc2 just got updated so pip3 doesn't give you the latest version yet) 
+```
+Find the folder where you python3 package is and download/replace the pysc2 folder from 
+
+https://github.com/deepmind/pysc2
+```
+3. Install the required packages if needed using pip
 ```
 pip3 install <package-name>
 ```
-3. Move the HappyKiting3V2.SC2Map to the Starcraft 2 minimap folder. 
+4. Move the HappyKiting3V2.SC2Map to the Starcraft 2 minimap folder.
 ```
 Application/StarCraft II/Maps/mini_games (MacOS)
 ~/StarCraft II/Maps/mini_games (Linux)
 ```
-4. Lastly, go to the directory where u clone this repository and run
+5. Lastly, go to the directory where u clone this repository and run
 ```
  python3 -m main
 ```
@@ -40,3 +46,5 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 1. Test the performance of the agent and update the action, reward, and extracted features if needed
 2. Training smart_agent3
 3. Apply Batch Normalization & modified the DQN network structure
+
+
