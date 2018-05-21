@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import time
+import matplotlib.pyplot as plt
 from algorithms.dqn import DeepQNetwork
 
 from pysc2.lib import actions
@@ -92,17 +93,21 @@ class SmartAgent(object):
         self.counter = 0
         self.fighting = False
         self.win = 0
+        self.player_hp = []
+        self.previous_enemy_hp = []
 
         self.previous_action = None
         self.previous_state = None
 
-    def step(self, obs, test):
+    def step(self, obs):
         # from the origin base.agent
         self.counter += 1
         self.steps += 1
 
         # time.sleep(0.25)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
+
+        self.player_hp.append(sum(player_hp))
 
         if self.counter == 1:
             return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
@@ -143,11 +148,6 @@ class SmartAgent(object):
         for i in range(0, enemy_count):
             if self.previous_enemy_hp[i] > enemy_hp[i]:
                 reward += 1
-
-            if enemy_hp[i] < 10:
-                reward += 10
-            elif 10 <= enemy_hp[i] < 20:
-                reward += 5
 
         # # reward increases if kills opponent's army
         # kill_army_count = DEFAULT_ENEMY_COUNT - enemy_count
@@ -211,8 +211,6 @@ class SmartAgent(object):
 
         if enemy_unit_count == 0:
             self.win += 1
-
-        # print(enemy_hp)
 
         # get distance
         min_distance = [100000, 100000, 100000]
@@ -339,6 +337,14 @@ class SmartAgent(object):
 
         self.previous_action = 5
         return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
+
+    def plot_hp(self, map, save):
+        plt.plot(np.arange(len(self.player_hp)), self.player_hp)
+        plt.ylabel('player hp')
+        plt.xlabel('training steps')
+        if save:
+            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
+        plt.show()
 
     # from the origin base.agent
     def setup(self, obs_spec, action_spec):

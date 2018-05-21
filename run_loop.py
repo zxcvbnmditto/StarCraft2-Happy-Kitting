@@ -38,7 +38,7 @@ def run_loop(agents, env, max_frames=0, max_episodes=0):
         a.reset()
       while True:
         total_frames += 1
-        actions = [agent.step(timestep, timestep.reward)
+        actions = [agent.step(timestep)
                    for agent, timestep in zip(agents, timesteps)]
         if max_frames and total_frames >= max_frames:
           return

@@ -73,7 +73,7 @@ class DeepQNetwork(object):
             e_bn1 = tf.layers.batch_normalization(e_z1, training=True)
             e_a1 = tf.nn.relu(e_bn1)
             ### output layer
-            self.q_eval = tf.layers.dense(e_a1, self.n_actions, kernel_initializer=w_initializer,
+            self.q_eval = tf.layers.dense(e_a1, self.n_actions, activation=tf.nn.relu, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='q')
 
         # ------------------ build target_net ------------------
@@ -83,7 +83,7 @@ class DeepQNetwork(object):
             t_bn1 = tf.layers.batch_normalization(t_z1, training=True)
             t_a1 = tf.nn.relu(t_bn1)
             ### output layer
-            self.q_next = tf.layers.dense(t_a1, self.n_actions, kernel_initializer=w_initializer,
+            self.q_next = tf.layers.dense(t_a1, self.n_actions, activation=tf.nn.relu, kernel_initializer=w_initializer,
                                           bias_initializer=b_initializer, name='t2')
 
         with tf.variable_scope('q_target'):
@@ -110,13 +110,17 @@ class DeepQNetwork(object):
         self.memory[index, :] = transition
         self.memory_counter += 1
 
-    def choose_action(self, observation):
+    def choose_action(self, observation, disabled_actions):
         # to have batch dimension when feed into tf placeholder
         observation = observation[np.newaxis, :]
 
         if np.random.uniform() < self.epsilon:
             # forward feed the observation and get q value for every actions
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
+
+            # assign to 0 since 0 is the min of relu
+            for i in range(0, len(disabled_actions)):
+                actions_value[0][disabled_actions[i]] = 0 # may have to change
 
             action = np.argmax(actions_value)
         else:
@@ -146,14 +150,13 @@ class DeepQNetwork(object):
                 self.s_: batch_memory[:, -self.n_features:],
             })
 
-
         self.cost_his.append(cost)
 
         # increasing epsilon
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
 
-    def plot_reward(self, map, step, save):
+    def plot_reward(self, map, save):
         plt.plot(np.arange(len(self.reward)), self.reward)
         plt.ylabel('Reward')
         plt.xlabel('training steps')
@@ -161,7 +164,7 @@ class DeepQNetwork(object):
             plt.savefig('pics/' + map + '/dqn' + '/reward.png')
         plt.show()
 
-    def plot_cost(self, map, step, save):
+    def plot_cost(self, map, save):
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
         plt.ylabel('Cost')
         plt.xlabel('training steps')

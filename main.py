@@ -36,11 +36,11 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "smart_agent4.SmartAgent",
+flags.DEFINE_string("agent", "smart_agent3.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
-flags.DEFINE_string("map", 'HK3V1', "Name of a map to use.")
+flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 flags.DEFINE_string("algorithm", 'dqn', "Name of algorithm to use.")
 
 
@@ -51,9 +51,9 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 100000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
-flags.DEFINE_integer("step_mul", 4, "Game steps per agent step.")
+flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
 
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
@@ -87,9 +87,11 @@ def run_thread(agent_cls, map_name, visualize):
     # agent.dqn.save_model('models/' + map_name + '/' + FLAGS.algorithm, 1)
 
     # plot cost and reward
-    print(agent.win)
-    agent.dqn.plot_cost(map_name, FLAGS.step_mul, save=False)
-    agent.dqn.plot_reward(map_name, FLAGS.step_mul, save=False)
+    # print(agent.win)
+    # agent.dqn.plot_cost(map_name, save=False)
+    agent.dqn.plot_reward(map_name, save=False)
+    agent.plot_hp(map_name, save=False)
+
 
 
     if FLAGS.save_replay:
