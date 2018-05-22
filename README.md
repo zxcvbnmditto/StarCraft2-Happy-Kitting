@@ -1,10 +1,12 @@
 #### About
-This is a project of creating a Starcraft 2 bot applying reinforcement learning <br>
+This is a project of creating a Starcraft 2 bot applying reinforcement learning
 
-dqn_old is the older version of the work <br>
-dqn_new is the latest version of the work
+dqn_old is the older version of the work >
+dqn_new is the latest version of the work 
 
-All the mini maps used in this project can be found in the maps folder <br>
+All the mini maps used in this project can be found in the maps folder
+You can also find some pretrained models in the models folder
+
 
 #### Environment:
 >Python 3 <br>
@@ -50,10 +52,18 @@ PLAYER_MAX_HP
 1. Using the updated pysc2 API
 2. Extract units hp and location as features
 3. Caculate the minimum distance between each of the player's unit to the opponent's units
+4. Use disabled actions to filter the unnecessary action based on current state
+5. Save, restore model, and plotting data enabled
+6. Prescipted a few initial actions of the agent to increase the performance by not wasting steps searching the enemy cluelessly
+7. Temporarily fix and generalize the select_point action
+8. Generalize the code so it is easy to be modified and tested
+
 
 #### Coming up:
 1. Test the performance of the agent and update the action, reward, and extracted features if needed
-2. Training smart_agent3
-3. Apply Batch Normalization & modified the DQN network structure
-
+2. Train the dqn agent more
+3. Add more layer for the dqn network
+4. Try out the tensorboard to keep track of the DQN variables
+5. Try out the cooling_weapon cycle
+6. Start to implementing the DDPG agent for the 2V1 map
 
