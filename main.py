@@ -35,15 +35,22 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
+# Change the following 3 flags to run the program successfully
+# agent, agent_file, map
+
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "smart_agent3.SmartAgent",
+flags.DEFINE_string("agent", "dqn_new.SmartAgent",
                     "Which agent to run")
+
+# modify executing file name here
+flags.DEFINE_string("agent_file", "dqn_new",
+                    "Which file to run")
 
 # edit map used here
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
-flags.DEFINE_string("algorithm", 'dqn', "Name of algorithm to use.")
 
 
+# -----------------------------------------------------------------------------------------------
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
 flags.DEFINE_integer("screen_resolution", 84,
                      "Resolution for screen feature layers.")
@@ -63,7 +70,7 @@ flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
 
-
+# -----------------------------------------------------------------------------------------------
 def run_thread(agent_cls, map_name, visualize):
   with sc2_env.SC2Env(
       map_name=map_name,
@@ -77,23 +84,25 @@ def run_thread(agent_cls, map_name, visualize):
     env = available_actions_printer.AvailableActionsPrinter(env)
     agent = agent_cls()
 
-    # set the path to save the models and graphs
-    path = 'models/' + map_name + '/' + FLAGS.algorithm
+    agent_name = FLAGS.agent_file
 
-    # restore the model
+    # set the path to save the models and graphs
+    path = 'models/' + agent_name
+
+    # restore the model only if u have the previously trained a model
     #agent.dqn.load_model(path)
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    #agent.dqn.save_model(path, 1)
+    agent.dqn.save_model(path, 1)
 
     # plot cost and reward
-    # agent.dqn.plot_cost(path, save=True)
-    # agent.dqn.plot_reward(path, save=True)
-    # agent.plot_player_hp(path, save=True)
-    # agent.plot_enemy_hp(path, save=True)
+    agent.dqn.plot_cost(path, save=True)
+    agent.dqn.plot_reward(path, save=True)
+    agent.plot_player_hp(path, save=True)
+    agent.plot_enemy_hp(path, save=True)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
