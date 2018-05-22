@@ -1,11 +1,8 @@
 #### About
 This is a project of creating a Starcraft 2 bot applying reinforcement learning <br>
 
-smart_agent.py is the base structure of all agents dqn<br>
-smart_agent2.py is designed to run the 3V2 mapusing dqn <br>
-smart_agent3.py is designed to run the 2V1 map using dqn<br>
-smart_agent4.py is designed to run the 3V1 map using dqn<br>
-smart_agent5.py will be designed to run the 3V1 map using ddpg <br>
+dqn_old is the older version of the work <br>
+dqn_new is the latest version of the work
 
 All the mini maps used in this project can be found in the maps folder <br>
 
@@ -33,10 +30,22 @@ pip3 install <package-name>
 Application/StarCraft II/Maps/mini_games (MacOS)
 ~/StarCraft II/Maps/mini_games (Linux)
 ```
-5. Lastly, go to the directory where u clone this repository and run
+#### Running
+1. Lastly, go to the directory where u clone this repository and run
 ```
  python3 -m main
 ```
+#### Modified the code
+1. Change the flags in main.py if needed
+2. Change the option of restore model, load model, and plot in main.py if needed
+3. Change the important map info in the agent file dqn_new.py
+```
+DEFAULT_ENEMY_COUNT
+DEFAULT_PLAYER_COUNT
+ENEMY_MAX_HP 
+PLAYER_MAX_HP
+```
+
 #### Current Progress:
 1. Using the updated pysc2 API
 2. Extract units hp and location as features

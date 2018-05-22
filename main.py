@@ -90,7 +90,7 @@ def run_thread(agent_cls, map_name, visualize):
     path = 'models/' + agent_name
 
     # restore the model only if u have the previously trained a model
-    #agent.dqn.load_model(path)
+    agent.dqn.load_model(path)
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
