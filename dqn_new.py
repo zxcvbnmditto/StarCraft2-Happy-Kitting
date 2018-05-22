@@ -87,6 +87,7 @@ class SmartAgent(object):
         self.steps += 1
         self.reward += obs.reward
 
+        self.counter += 1
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
         self.player_hp.append(sum(player_hp))
@@ -127,11 +128,11 @@ class SmartAgent(object):
         reward = 0
 
         # give reward by calculating opponents units lost hp
-        for i in range(0, enemy_count):
+        for i in range(0, DEFAULT_ENEMY_COUNT):
             reward += int((ENEMY_MAX_HP - enemy_hp[i]) * 10 / ENEMY_MAX_HP)
 
         # give reward by remaining player units hp
-        for i in range(0, player_count):
+        for i in range(0, DEFAULT_PLAYER_COUNT):
             reward += int(player_hp[i] * 5 / PLAYER_MAX_HP)
 
         # get killed and lost unit reward from the map
@@ -375,6 +376,7 @@ class SmartAgent(object):
         self.episodes += 1
         # added instead of original
         self.fighting = False
+        self.counter = 0
 
 
 
