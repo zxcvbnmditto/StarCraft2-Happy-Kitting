@@ -89,6 +89,7 @@ class SmartAgent(object):
         self.fighting = False
         self.win = 0
         self.player_hp = []
+        self.enemy_hp = []
         self.previous_enemy_hp = []
         self.previous_player_hp = []
 
@@ -104,6 +105,7 @@ class SmartAgent(object):
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
         self.player_hp.append(sum(player_hp))
+        self.enemy_hp.append(sum(enemy_hp))
 
         while not self.fighting:
             for i in range(0, player_count):
@@ -129,7 +131,7 @@ class SmartAgent(object):
         self.previous_enemy_hp = enemy_hp
         self.previous_player_hp = player_hp
 
-        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected)
+        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected, player_count, enemy_count)
 
     def get_reward(self, obs, distance, player_hp, enemy_hp, player_count, enemy_count):
         reward = 0
@@ -235,9 +237,7 @@ class SmartAgent(object):
         return current_state, feature1, feature2, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
         # make the desired action calculated by DQN
-    def perform_action(self, obs, action, unit_locs, enemy_locs, selected):
-        unit_count = obs.observation['player'][8]
-
+    def perform_action(self, obs, action, unit_locs, enemy_locs, selected, player_count, enemy_count):
         index = -1
 
         for i in range(0, DEFAULT_PLAYER_COUNT):
@@ -249,18 +249,19 @@ class SmartAgent(object):
 
         if action == ACTION_SELECT_UNIT_1:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if unit_count >= 1:
+                if player_count >= 1:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
 
         elif action == ACTION_SELECT_UNIT_2:
             if _SELECT_POINT in obs.observation['available_actions']:
-                if unit_count >= 2:
+                if player_count >= 2:
                     return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[1]])
 
         #-----------------------
         elif action == ATTACK_TARGET:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
+                if enemy_count >= 1:
+                    return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
         # ------------------------
 
         elif action == MOVE_UP:
@@ -373,8 +374,16 @@ class SmartAgent(object):
 
         return disabled_actions
 
-    def plot_hp(self, map, save):
+    def plot_player_hp(self, map, save):
         plt.plot(np.arange(len(self.player_hp)), self.player_hp)
+        plt.ylabel('player hp')
+        plt.xlabel('training steps')
+        if save:
+            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
+        plt.show()
+
+    def plot_enemy_hp(self, map, save):
+        plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp)
         plt.ylabel('player hp')
         plt.xlabel('training steps')
         if save:
