@@ -1,10 +1,10 @@
 #### About
 This is a project of creating a Starcraft 2 bot applying reinforcement learning
 
-dqn_old is the older version of the work >
+dqn_old is the older version of the work <br>
 dqn_new is the latest version of the work 
 
-All the mini maps used in this project can be found in the maps folder
+All the mini maps used in this project can be found in the maps folder <br>
 You can also find some pretrained models in the models folder
 
 
