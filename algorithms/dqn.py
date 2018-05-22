@@ -156,20 +156,20 @@ class DeepQNetwork(object):
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
 
-    def plot_reward(self, map, save):
+    def plot_reward(self, path, save):
         plt.plot(np.arange(len(self.reward)), self.reward)
         plt.ylabel('Reward')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
+            plt.savefig(path + '/reward.png')
         plt.show()
 
-    def plot_cost(self, map, save):
+    def plot_cost(self, path, save):
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
         plt.ylabel('Cost')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/dqn' + '/cost.png')
+            plt.savefig(path + '/cost.png')
         plt.show()
 
     def save_model(self, path, count):

@@ -1,23 +1,17 @@
 import numpy as np
 import math
 import time
+import random
 import matplotlib.pyplot as plt
 from algorithms.dqn import DeepQNetwork
 
 from pysc2.lib import actions
-from pysc2.lib import features
 
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_UNIT = actions.FUNCTIONS.select_unit.id
 _ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
-
-
-_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
-
 
 _PLAYER_SELF = 1
 _PLAYER_HOSTILE = 4
@@ -26,25 +20,17 @@ _UNIT_ALLIANCE = 1
 _UNIT_HEALTH = 2
 _UNIT_X = 12
 _UNIT_Y = 13
-_UNIT_RADIUS = 15 # find range
-_UNIT_HEALTH_RATIO = 7
 _UNIT_IS_SELECTED = 17
 
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 
-ACTION_DO_NOTHING = 'donothing'
+ATTACK_TARGET = 'attacktarget'
 MOVE_UP = 'moveup'
 MOVE_DOWN = 'movedown'
 MOVE_LEFT = 'moveleft'
 MOVE_RIGHT = 'moveright'
-MOVE_UP_LEFT = 'moveupleft'
-MOVE_DOWN_LEFT = 'movedownleft'
-MOVE_UP_RIGHT = 'moveupright'
-MOVE_DOWN_RIGHT = 'movedownright'
-ACTION_SELECT_UNIT_1 = 'selectunit1'
-ACTION_SELECT_UNIT_2 = 'selectunit2'
-ATTACK_TARGET = 'attacktarget'
+ACTION_SELECT_UNIT = 'selectunit'
 
 smart_actions = [
     ATTACK_TARGET,
@@ -52,15 +38,15 @@ smart_actions = [
     MOVE_DOWN,
     MOVE_LEFT,
     MOVE_RIGHT,
-    ACTION_SELECT_UNIT_1,
-    ACTION_SELECT_UNIT_2
+    ACTION_SELECT_UNIT
 ]
 
+# Change this if using a different map
 DEFAULT_ENEMY_COUNT = 1
 DEFAULT_PLAYER_COUNT = 2
 
-KILL_UNIT_REWARD = 5
-LOSS_UNIT_REWARD = -2
+ENEMY_MAX_HP = 100
+PLAYER_MAX_HP = 60
 
 
 class SmartAgent(object):
@@ -74,7 +60,7 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            5, # one of the most important data that needs to be update # 17 or 7
+            5, # one of the most important data that needs to be update manually
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
@@ -101,12 +87,12 @@ class SmartAgent(object):
         self.steps += 1
         self.reward += obs.reward
 
-        # time.sleep(0.1)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
         self.player_hp.append(sum(player_hp))
         self.enemy_hp.append(sum(enemy_hp))
 
+        # scripted the few initial actions to increases the learning performance
         while not self.fighting:
             for i in range(0, player_count):
                 if distance[i] < 20:
@@ -115,6 +101,7 @@ class SmartAgent(object):
 
             return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, enemy_loc[0]])
 
+        # record the transitions to memory and learn by DQN
         if self.previous_action is not None:
             reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count)
 
@@ -131,49 +118,24 @@ class SmartAgent(object):
         self.previous_enemy_hp = enemy_hp
         self.previous_player_hp = player_hp
 
-        return self.perform_action(obs, smart_action, player_loc, enemy_loc, selected, player_count, enemy_count)
+        next_action = self.perform_action(obs, smart_action, player_loc, enemy_loc, selected, player_count, enemy_count, distance,
+                            player_hp)
+
+        return next_action
 
     def get_reward(self, obs, distance, player_hp, enemy_hp, player_count, enemy_count):
         reward = 0
 
         # give reward by calculating opponents units lost hp
         for i in range(0, enemy_count):
-            reward += int((100 - enemy_hp[i]) * 10 / 100)
+            reward += int((ENEMY_MAX_HP - enemy_hp[i]) * 10 / ENEMY_MAX_HP)
 
         # give reward by remaining player units hp
         for i in range(0, player_count):
-            reward += int(player_hp[i] * 5 / 60)
-
-        # give reward if dealing damage on enemy
-        # for i in range(0, enemy_count):
-        #     if self.previous_enemy_hp[i] > enemy_hp[i]:
-        #         reward += 1
-        #
-        # for i in range(0, player_count):
-        #     if self.previous_player_hp[i] <= player_hp[i]:
-        #         reward += 1
-
-        # # reward increases if kills opponent's army
-        # kill_army_count = DEFAULT_ENEMY_COUNT - enemy_count
-        # reward += kill_army_count * KILL_UNIT_REWARD
-        #
-        # # reward decreases if loses army
-        # lost_army_count = DEFAULT_PLAYER_COUNT - player_count
-        # reward += lost_army_count * LOSS_UNIT_REWARD
+            reward += int(player_hp[i] * 5 / PLAYER_MAX_HP)
 
         # get killed and lost unit reward from the map
         reward += obs.reward
-
-        # reward only player's unit maintains a certain distance with the enemy
-        # for i in range(0, DEFAULT_PLAYER_COUNT):
-        #     if 25 >= distance[i] > 15:
-        #         reward += 2
-        #     elif distance[i] > 42:
-        #         reward -= 2
-        #     elif 42 >= distance[i] > 25:
-        #         reward -= 1
-        #     else:
-        #         reward -= 5
 
         return reward
 
@@ -203,7 +165,7 @@ class SmartAgent(object):
                 is_selected.append(var[i][_UNIT_IS_SELECTED])
                 player_unit_count += 1
 
-        # append if necessary
+        # append if necessary so that maintains fixed length for current state
         for i in range(player_unit_count, DEFAULT_PLAYER_COUNT):
             player.append((-1, -1))
             player_hp.append(0)
@@ -214,7 +176,7 @@ class SmartAgent(object):
             enemy_hp.append(0)
 
         # get distance
-        min_distance = [100000, 100000]
+        min_distance = [100000 for x in range(DEFAULT_PLAYER_COUNT)]
 
         for i in range(0, player_unit_count):
             for j in range(0, enemy_unit_count):
@@ -234,10 +196,10 @@ class SmartAgent(object):
         # combine all features horizontally
         current_state = np.hstack((feature1, feature2, feature5))
 
-        return current_state, feature1, feature2, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
+        return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
-        # make the desired action calculated by DQN
-    def perform_action(self, obs, action, unit_locs, enemy_locs, selected, player_count, enemy_count):
+    # make the desired action calculated by DQN
+    def perform_action(self, obs, action, unit_locs, enemy_locs, selected, player_count, enemy_count, distance, player_hp):
         index = -1
 
         for i in range(0, DEFAULT_PLAYER_COUNT):
@@ -247,22 +209,10 @@ class SmartAgent(object):
         x = unit_locs[index][0]
         y = unit_locs[index][1]
 
-        if action == ACTION_SELECT_UNIT_1:
-            if _SELECT_POINT in obs.observation['available_actions']:
-                if player_count >= 1:
-                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
-
-        elif action == ACTION_SELECT_UNIT_2:
-            if _SELECT_POINT in obs.observation['available_actions']:
-                if player_count >= 2:
-                    return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[1]])
-
-        #-----------------------
-        elif action == ATTACK_TARGET:
+        if action == ATTACK_TARGET:
             if _ATTACK_SCREEN in obs.observation["available_actions"]:
                 if enemy_count >= 1:
                     return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, enemy_locs[0]])  # x,y => col,row
-        # ------------------------
 
         elif action == MOVE_UP:
             if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
@@ -332,9 +282,37 @@ class SmartAgent(object):
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
-        self.previous_action = 5
-        return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[0]])
+        # Default case => Select unit
+        # select the unit that is closest to the enemy
+        # if same distance, pick the one with lower hp
+        # if same distance and hp, randomly select one
+        closest_indices = []
+        closest_index = distance.index(min(distance))
 
+        for i in range(0, player_count):
+            if distance[i] == distance[closest_index]:
+                closest_indices.append(i)
+
+        lowest_hp_indices = []
+        lowest_hp_index = player_hp.index(min(player_hp))
+
+        for i in range(0, player_count):
+            if player_hp[i] == player_hp[lowest_hp_index]:
+                lowest_hp_indices.append(i)
+
+        common_indices = list(set(closest_indices).intersection(lowest_hp_indices))
+
+        if len(common_indices) != 0:
+            selected_index = random.choice(common_indices)
+        elif len(closest_indices) != 0:
+            selected_index = random.choice(closest_indices)
+        else:
+            selected_index = 0
+
+        self.previous_action = 5
+        return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[selected_index]])
+
+    # get_disabled_actions filters the redundant actions from the action space
     def get_disabled_actions(self, player_loc, selected):
         disabled_actions = []
 
@@ -366,28 +344,25 @@ class SmartAgent(object):
             disabled_actions.append(smart_actions.index(MOVE_RIGHT)) #4
 
         # not selecting the same unit if the previous actions already attempts to select it
-        if self.previous_action == smart_actions.index(ACTION_SELECT_UNIT_1):
-            disabled_actions.append(smart_actions.index(ACTION_SELECT_UNIT_1)) #5
-
-        if self.previous_action == smart_actions.index(ACTION_SELECT_UNIT_2):
-            disabled_actions.append(smart_actions.index(ACTION_SELECT_UNIT_2)) #6
+        if self.previous_action == smart_actions.index(ACTION_SELECT_UNIT):
+            disabled_actions.append(smart_actions.index(ACTION_SELECT_UNIT)) #5
 
         return disabled_actions
 
-    def plot_player_hp(self, map, save):
+    def plot_player_hp(self, path, save):
         plt.plot(np.arange(len(self.player_hp)), self.player_hp)
         plt.ylabel('player hp')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
+            plt.savefig(path + '/player_hp.png')
         plt.show()
 
-    def plot_enemy_hp(self, map, save):
+    def plot_enemy_hp(self, path, save):
         plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp)
-        plt.ylabel('player hp')
+        plt.ylabel('enemy hp')
         plt.xlabel('training steps')
         if save:
-            plt.savefig('pics/' + map + '/dqn' + '/reward.png')
+            plt.savefig(path + '/enemy_hp.png')
         plt.show()
 
     # from the origin base.agent
@@ -398,6 +373,7 @@ class SmartAgent(object):
     # from the origin base.agent
     def reset(self):
         self.episodes += 1
+        # added instead of original
         self.fighting = False
 
 

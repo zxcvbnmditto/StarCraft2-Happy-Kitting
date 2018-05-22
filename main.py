@@ -77,21 +77,23 @@ def run_thread(agent_cls, map_name, visualize):
     env = available_actions_printer.AvailableActionsPrinter(env)
     agent = agent_cls()
 
+    # set the path to save the models and graphs
+    path = 'models/' + map_name + '/' + FLAGS.algorithm
+
     # restore the model
-    agent.dqn.load_model('models/' + map_name + '/' + FLAGS.algorithm)
+    #agent.dqn.load_model(path)
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    # agent.dqn.save_model('models/' + map_name + '/' + FLAGS.algorithm, 1)
+    #agent.dqn.save_model(path, 1)
 
     # plot cost and reward
-    # print(agent.win)
-    #agent.dqn.plot_cost(map_name, save=False)
-    #agent.dqn.plot_reward(map_name, save=False)
-    agent.plot_player_hp(map_name, save=False)
-    agent.plot_enemy_hp(map_name, save=False)
+    # agent.dqn.plot_cost(path, save=True)
+    # agent.dqn.plot_reward(path, save=True)
+    # agent.plot_player_hp(path, save=True)
+    # agent.plot_enemy_hp(path, save=True)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
