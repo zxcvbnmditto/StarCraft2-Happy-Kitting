@@ -89,6 +89,7 @@ class SmartAgent(object):
         self.reward += obs.reward
 
         self.counter += 1
+        # time.sleep(0.1)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
         self.player_hp.append(sum(player_hp))
@@ -135,6 +136,9 @@ class SmartAgent(object):
         # give reward by remaining player units hp
         for i in range(0, DEFAULT_PLAYER_COUNT):
             reward += int(player_hp[i] * 5 / PLAYER_MAX_HP)
+
+            if distance[0] <= 5:
+                reward -= -1
 
         # get killed and lost unit reward from the map
         reward += obs.reward
