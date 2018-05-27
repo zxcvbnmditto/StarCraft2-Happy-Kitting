@@ -58,7 +58,7 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 2000, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
 
@@ -99,10 +99,10 @@ def run_thread(agent_cls, map_name, visualize):
     #agent.dqn.save_model(path, 1)
 
     # plot cost and reward
-    agent.dqn.plot_cost(path, save=False)
-    agent.dqn.plot_reward(path, save=False)
-    agent.plot_player_hp(path, save=False)
-    agent.plot_enemy_hp(path, save=False)
+    #agent.dqn.plot_cost(path, save=False)
+    #agent.dqn.plot_reward(path, save=False)
+    #agent.plot_player_hp(path, save=False)
+    #agent.plot_enemy_hp(path, save=False)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
