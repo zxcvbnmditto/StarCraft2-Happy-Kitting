@@ -17,6 +17,7 @@ _PLAYER_HOSTILE = 4
 
 _UNIT_ALLIANCE = 1
 _UNIT_HEALTH = 2
+_UNIT_SHIELD = 3
 _UNIT_X = 12
 _UNIT_Y = 13
 _UNIT_IS_SELECTED = 17
@@ -45,7 +46,7 @@ smart_actions = [
 DEFAULT_ENEMY_COUNT = 1
 DEFAULT_PLAYER_COUNT = 2
 
-ENEMY_MAX_HP = 100
+ENEMY_MAX_HP = 150
 PLAYER_MAX_HP = 60
 
 
@@ -158,7 +159,7 @@ class SmartAgent(object):
         for i in range(0, var.shape[0]):
             if var[i][_UNIT_ALLIANCE] == _PLAYER_HOSTILE:
                 enemy.append((var[i][_UNIT_X], var[i][_UNIT_Y]))
-                enemy_hp.append(var[i][_UNIT_HEALTH])
+                enemy_hp.append(var[i][_UNIT_HEALTH] + var[i][_UNIT_SHIELD ])
                 enemy_unit_count += 1
             else:
                 player.append((var[i][_UNIT_X], var[i][_UNIT_Y]))
