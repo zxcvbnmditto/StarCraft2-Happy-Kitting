@@ -39,11 +39,11 @@ FLAGS = flags.FLAGS
 # agent, agent_file, map
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "dqn_new.SmartAgent",
+flags.DEFINE_string("agent", "ddpg_new.SmartAgent",
                     "Which agent to run")
 
 # modify executing file name here
-flags.DEFINE_string("agent_file", "dqn_new",
+flags.DEFINE_string("agent_file", "ddpg_new",
                     "Which file to run")
 
 # edit map used here
@@ -90,7 +90,7 @@ def run_thread(agent_cls, map_name, visualize):
     path = 'models/' + agent_name
 
     # restore the model only if u have the previously trained a model
-    agent.dqn.load_model(path)
+    #agent.dqn.load_model(path)
 
     # run the steps
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
@@ -99,10 +99,10 @@ def run_thread(agent_cls, map_name, visualize):
     #agent.dqn.save_model(path, 1)
 
     # plot cost and reward
-    agent.dqn.plot_cost(path, save=False)
-    agent.dqn.plot_reward(path, save=False)
-    agent.plot_player_hp(path, save=False)
-    agent.plot_enemy_hp(path, save=False)
+    #agent.dqn.plot_cost(path, save=False)
+    #agent.dqn.plot_reward(path, save=False)
+    #agent.plot_player_hp(path, save=False)
+    #agent.plot_enemy_hp(path, save=False)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
