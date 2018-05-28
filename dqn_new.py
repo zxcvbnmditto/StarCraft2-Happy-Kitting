@@ -61,13 +61,13 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            5, # one of the most important data that needs to be update manually
+            11, # one of the most important data that needs to be update manually
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=200,
-            memory_size=50000,
-            batch_size=320,
+            memory_size=5000,
+            batch_size=32,
             e_greedy_increment=None,
             output_graph=True
         )
@@ -89,6 +89,10 @@ class SmartAgent(object):
         self.reward += obs.reward
 
         self.counter += 1
+
+        if self.dqn.memory_counter >= 200 and self.dqn.memory_counter % 5 == 0:
+            self.dqn.learn()
+
         # time.sleep(0.1)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
@@ -109,7 +113,6 @@ class SmartAgent(object):
             reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count)
 
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
-            self.dqn.learn()
 
         # get the disabled actions and used it when choosing actions
         disabled_actions = self.get_disabled_actions(player_loc, selected)
@@ -137,7 +140,7 @@ class SmartAgent(object):
         for i in range(0, DEFAULT_PLAYER_COUNT):
             reward += int(player_hp[i] * 5 / PLAYER_MAX_HP)
 
-            if distance[0] <= 5:
+            if distance[0] <= 5 or distance[0] > 20:
                 reward -= -1
 
         # get killed and lost unit reward from the map
@@ -200,7 +203,7 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        current_state = np.hstack((feature1, feature2, feature5))
+        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
 
         return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
