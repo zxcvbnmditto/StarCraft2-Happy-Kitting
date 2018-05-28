@@ -48,6 +48,12 @@ ENEMY_MAX_HP
 PLAYER_MAX_HP
 ```
 
+#### Use Tensorboard to visualize the data
+```
+Run this after you have already run the agent at least once
+tensorboard --logdir logs/
+```
+
 #### Current Progress:
 1. Using the updated pysc2 API
 2. Extract units hp and location as features

@@ -96,13 +96,14 @@ def run_thread(agent_cls, map_name, visualize):
     run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    #agent.dqn.save_model(path, 1)
+    agent.dqn.save_model(path, 1)
 
     # plot cost and reward
-    #agent.dqn.plot_cost(path, save=False)
-    #agent.dqn.plot_reward(path, save=False)
-    #agent.plot_player_hp(path, save=False)
-    #agent.plot_enemy_hp(path, save=False)
+    save_pic = True
+    agent.dqn.plot_cost(path, save=save_pic)
+    agent.dqn.plot_reward(path, save=save_pic)
+    agent.plot_player_hp(path, save=save_pic)
+    agent.plot_enemy_hp(path, save=save_pic)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)

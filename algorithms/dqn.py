@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class DeepQNetwork(object):
@@ -63,64 +64,37 @@ class DeepQNetwork(object):
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 
-        w_initializer, b_initializer = tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)
-
-        # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            # hidden layer 1
-            e_z1 = tf.layers.dense(self.s, 6, activation=None, kernel_initializer=w_initializer, bias_initializer=b_initializer, name='e1')
-            tf.summary.histogram('e_z1', e_z1)
+            # layer 1
+            with tf.variable_scope('layer1'):
+                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            e_bn1 = tf.layers.batch_normalization(e_z1, training=True)
-            tf.summary.histogram('e_bn1', e_bn1)
+            # layer 2
+            with tf.variable_scope('layer2'):
+                l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            e_a1 = tf.nn.relu(e_bn1)
-            tf.summary.histogram('e_a1', e_a1)
+            with tf.variable_scope('layer3'):
+                l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            # hidden layer 2
-            e_z2 = tf.layers.dense(e_a1, 6, activation=None, kernel_initializer=w_initializer,bias_initializer=b_initializer, name='e2')
-            tf.summary.histogram('e_z2', e_z2)
-
-            e_bn2 = tf.layers.batch_normalization(e_z2, training=True)
-            tf.summary.histogram('e_bn2', e_bn2)
-
-            e_a2 = tf.nn.relu(e_bn2)
-            tf.summary.histogram('e_a2', e_a2)
-
-            ### output layer
-            self.q_eval = tf.layers.dense(e_a2, self.n_actions, activation=tf.nn.relu, kernel_initializer=w_initializer,
-                                          bias_initializer=b_initializer, name='q')
-            tf.summary.histogram('q_eval', self.q_eval)
-
-
-        # ------------------ build target_net ------------------
+            # output layer
+            with tf.variable_scope('output_layer'):
+                self.q_eval = self.add_layer(inputs=l3, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
 
         with tf.variable_scope('target_net'):
-            # hidden layer 1
-            t_z1 = tf.layers.dense(self.s_, 6, activation=None, kernel_initializer=w_initializer, bias_initializer=b_initializer, name='t1')
-            tf.summary.histogram('t_z1', t_z1)
+            # layer 1
+            with tf.variable_scope('layer1'):
+                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            t_bn1 = tf.layers.batch_normalization(t_z1, training=True)
-            tf.summary.histogram('t_bn1', t_bn1)
+            # layer 2
+            with tf.variable_scope('layer2'):
+                l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            t_a1 = tf.nn.relu(t_bn1)
-            tf.summary.histogram('t_a1', t_a1)
+            with tf.variable_scope('layer3'):
+                l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
-            # hidden layer 2
-            t_z2 = tf.layers.dense(t_a1, 6, activation=None, kernel_initializer=w_initializer,
-                                   bias_initializer=b_initializer, name='t2')
-            tf.summary.histogram('t_z2', t_z2)
-
-            t_bn2 = tf.layers.batch_normalization(t_z2, training=True)
-            tf.summary.histogram('t_bn2', t_bn2)
-
-            t_a2 = tf.nn.relu(t_bn2)
-            tf.summary.histogram('t_a2', t_a2)
-
-            ### output layer
-            self.q_next = tf.layers.dense(t_a2, self.n_actions, activation=tf.nn.relu, kernel_initializer=w_initializer,
-                                          bias_initializer=b_initializer, name='t3')
-            tf.summary.histogram('q_next', self.q_next)
+            # output layer
+            with tf.variable_scope('output_layer'):
+                self.q_next = self.add_layer(inputs=l3, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
 
 
         with tf.variable_scope('q_target'):
@@ -138,6 +112,54 @@ class DeepQNetwork(object):
             with tf.control_dependencies(update_ops):
                 self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
+    def add_layer(self, inputs, in_size, out_size, activation_function=None, norm=False):
+        # weights and biases (bad initialization for this case)
+        Weights = tf.Variable(tf.random_normal([in_size, out_size], mean=0., stddev=1.))
+        biases = tf.Variable(tf.zeros([1, out_size]) + 0.1)
+
+        # fully connected product
+        Wx_plus_b = tf.matmul(inputs, Weights) + biases
+        z = Wx_plus_b
+
+        # normalize fully connected product
+        if norm:
+            # Batch Normalize
+            fc_mean, fc_var = tf.nn.moments(
+                Wx_plus_b,
+                axes=[0],  # the dimension you wanna normalize, here [0] for batch
+            )
+            scale = tf.Variable(tf.ones([out_size]))
+            shift = tf.Variable(tf.zeros([out_size]))
+            epsilon = 0.001
+
+            # apply moving average for mean and var when train on batch
+            ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+            def mean_var_with_update():
+                ema_apply_op = ema.apply([fc_mean, fc_var])
+                with tf.control_dependencies([ema_apply_op]):
+                    return tf.identity(fc_mean), tf.identity(fc_var)
+
+            mean, var = mean_var_with_update()
+
+            z = tf.nn.batch_normalization(Wx_plus_b, mean, var, shift, scale, epsilon)
+            # similar with this two steps:
+            # Wx_plus_b = (Wx_plus_b - fc_mean) / tf.sqrt(fc_var + 0.001)
+            # Wx_plus_b = Wx_plus_b * scale + shift
+
+        # activation
+        if activation_function is None:
+            a = z
+        else:
+            a = activation_function(z)
+
+        tf.summary.histogram('Wx_plus_b', Wx_plus_b)
+        tf.summary.histogram('z', z)
+        tf.summary.histogram('a', a)
+        tf.summary.histogram('weights', Weights)
+        tf.summary.histogram('biases', biases)
+
+        return a
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
