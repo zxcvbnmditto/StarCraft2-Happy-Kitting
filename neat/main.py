@@ -80,7 +80,7 @@ EP_STEP = 500  # maximum episode steps
 GENERATION_EP = 10  # evaluate each genome by average 10-episode rewards
 GENERATION = 5
 TRAINING = False  # training or testing
-CHECKPOINT = 9  # test on this checkpoint
+CHECKPOINT = 3  # test on this checkpoint
 
 
 # -----------------------------------------------------------------------------------------------
@@ -103,13 +103,13 @@ def run_thread(agent_cls, map_name, visualize):
         # path = 'models/' + agent_name
 
         # run the steps
-        run_loop([agent], env)
+        # run_loop([agent], env)
 
-        # training = True
-        # if training:
-        #   neat.run()
-        # else:
-        #   neat.evaluation()
+
+        if TRAINING:
+            run_loop([agent], env)
+        else:
+            evaluation([agent], env)
 
         # plot cost and reward
         save_pic = True
@@ -135,7 +135,7 @@ def run_loop(agents, env):
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    pop.add_reporter(neat.Checkpointer(5))
+    pop.add_reporter(neat.Checkpointer(1)) # guessing: num represents the saving interval for generation
 
     def eval_genomes(genomes, config):
         # total estimated count 10 * 10 * 10 * 500
@@ -160,7 +160,7 @@ def run_loop(agents, env):
 
                     action_values = net.activate(current_state)
                     action_index = np.argmax(action_values)
-                    action = agent.perform_action(timesteps[0], action_index, player_loc, enemy_loc, selected,
+                    action = agents[0].perform_action(timesteps[0], action_index, player_loc, enemy_loc, selected,
                                                         player_count, enemy_count, distance, player_hp)
                     accumulative_r += reward
                     if timesteps[0].last():
@@ -178,6 +178,59 @@ def run_loop(agents, env):
     visualize.plot_stats(stats, ylog=False, view=True)
     visualize.plot_species(stats, view=True)
 
+def evaluation(agents, env):
+    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
+
+    def eval_genomes(genomes, config):
+        # total estimated count 10 * 10 * 10 * 500
+        count = 0
+        for genome_id, genome in genomes:
+
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            ep_r = []
+            # loop count pop in each gen
+            for ep in range(GENERATION_EP):  # run many episodes for the genome in case it's lucky
+                print("Genome_id ", genome_id, " episode ", ep, " count ", count)
+                accumulative_r = 0.  # stage longer to get a greater episode reward
+                timesteps = env.reset()
+
+                for a in agents:
+                    a.reset()
+
+                for step in range(EP_STEP):
+                    count = count + 1
+                    # it finally works
+                    current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = agents[0].step(timesteps[0])
+
+                    action_values = net.activate(current_state)
+                    action_index = np.argmax(action_values)
+                    action = agents[0].perform_action(timesteps[0], action_index, player_loc, enemy_loc, selected,
+                                                        player_count, enemy_count, distance, player_hp)
+                    accumulative_r += reward
+                    if timesteps[0].last():
+                        break
+                    timesteps = env.step([action])
+
+                ep_r.append(accumulative_r)
+
+            genome.fitness = np.max(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
+
+    winner = p.run(eval_genomes, 1)     # find the winner in restored population
+
+    # show winner net
+    node_names = {-1: 'enemy_hp', -2: 'player_hp_1', -3: 'player_hp_2', -4: 'enemy_x', -5: 'enemy_y', -6: 'player_x_1',
+                  -7: 'player_y_1', -8: 'player_x_2', -9: 'player_y_2', -10: 'distance_1', -11: 'distance_2',
+                  0: 'attack', 1: 'up', 2: 'down', 3: 'left', 4: 'right', 5: 'select'}
+    visualize.draw_net(p.config, winner, True, node_names=node_names)
+
+    net = neat.nn.FeedForwardNetwork.create(winner, p.config)
+    while True:
+        s = env.reset()
+        while True:
+            env.render()
+            a = np.argmax(net.activate(s))
+            s, r, done, _ = env.step(a)
+            if done: break
 
 def _main(unused_argv):
     """Run an agent."""
