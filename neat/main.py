@@ -28,6 +28,9 @@ from pysc2 import maps
 from pysc2.env import available_actions_printer
 from pysc2.env import sc2_env
 from pysc2.lib import stopwatch
+import neat
+import visualize
+import numpy as np
 
 from absl import app
 from absl import flags
@@ -48,7 +51,6 @@ flags.DEFINE_string("agent_file", "agent",
 # edit map used here
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
-
 # -----------------------------------------------------------------------------------------------
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
 flags.DEFINE_integer("screen_resolution", 84,
@@ -57,7 +59,7 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 500, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
 
@@ -69,107 +71,154 @@ flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
 
+CONFIG = "./config"
+EP_STEP = 500  # maximum episode steps
+GENERATION_EP = 10  # evaluate by the minimum of 10-episode rewards
+TRAINING = False  # training or testing
+CHECKPOINT = 9  # test on this checkpoint
+
+
 # -----------------------------------------------------------------------------------------------
 def run_thread(agent_cls, map_name, visualize):
-  with sc2_env.SC2Env(
-      map_name=map_name,
-      step_mul=FLAGS.step_mul,
-      game_steps_per_episode=FLAGS.game_steps_per_episode,
-      feature_screen_size=FLAGS.screen_resolution,
-      feature_minimap_size=FLAGS.minimap_resolution,
-      visualize=visualize,
-      use_feature_units=True
-  ) as env:
-    env = available_actions_printer.AvailableActionsPrinter(env)
-    agent = agent_cls()
+    with sc2_env.SC2Env(
+            map_name=map_name,
+            step_mul=FLAGS.step_mul,
+            game_steps_per_episode=FLAGS.game_steps_per_episode,
+            feature_screen_size=FLAGS.screen_resolution,
+            feature_minimap_size=FLAGS.minimap_resolution,
+            visualize=visualize,
+            use_feature_units=True
+    ) as env:
+        env = available_actions_printer.AvailableActionsPrinter(env)
+        agent = agent_cls()
 
-    agent_name = FLAGS.agent_file
+        agent_name = FLAGS.agent_file
 
-    # set the path to save the models and graphs
-    #path = 'models/' + agent_name
+        # set the path to save the models and graphs
+        # path = 'models/' + agent_name
 
-    # restore the model only if u have the previously trained a model
-    #agent.dqn.load_model(path)
+        # run the steps
+        run_loop([agent], env, FLAGS.max_agent_steps)
 
-    # run the steps
-    run_loop([agent], env, FLAGS.max_agent_steps)
+        # training = True
+        # if training:
+        #   neat.run()
+        # else:
+        #   neat.evaluation()
 
-    # save the model
-    #agent.dqn.save_model(path, 1)
+        # plot cost and reward
+        save_pic = True
+        # agent.plot_player_hp(path, save=save_pic)
+        # agent.plot_enemy_hp(path, save=save_pic)
 
-    # plot cost and reward
-    save_pic = True
-    #agent.dqn.plot_cost(path, save=save_pic)
-    #agent.dqn.plot_reward(path, save=save_pic)
-    #agent.plot_player_hp(path, save=save_pic)
-    #agent.plot_enemy_hp(path, save=save_pic)
+        if FLAGS.save_replay:
+            env.save_replay(agent_cls.__name__)
 
-    if FLAGS.save_replay:
-      env.save_replay(agent_cls.__name__)
 
 def run_loop(agents, env, max_frames=0, max_episodes=0):
-  """A run loop to have agents and an environment interact."""
-  total_frames = 0
-  total_episodes = 0
-  start_time = time.time()
+    """A run loop to have agents and an environment interact."""
+    observation_spec = env.observation_spec()
+    action_spec = env.action_spec()
+    for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
+        agent.setup(obs_spec, act_spec)
 
-  observation_spec = env.observation_spec()
-  action_spec = env.action_spec()
-  for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
-    agent.setup(obs_spec, act_spec)
-  try:
-    while not max_episodes or total_episodes < max_episodes:
-      total_episodes += 1
-      timesteps = env.reset()
-      for a in agents:
-        a.reset()
-      while True:
-        total_frames += 1
-        actions = [agent.step(timestep)
-                   for agent, timestep in zip(agents, timesteps)]
-        if max_frames and total_frames >= max_frames:
-          return
-        if timesteps[0].last():
-          break
-        timesteps = env.step(actions)
-  except KeyboardInterrupt:
-    pass
-  finally:
-    elapsed_time = time.time() - start_time
-    print("Took %.3f seconds for %s steps: %.3f fps" % (
-        elapsed_time, total_frames, total_frames / elapsed_time))
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation, CONFIG)
+    pop = neat.Population(config)
+
+    # recode history
+    stats = neat.StatisticsReporter()
+    pop.add_reporter(stats)
+    pop.add_reporter(neat.StdOutReporter(True))
+    pop.add_reporter(neat.Checkpointer(5))
+
+    def eval_genomes(genomes, config):
+        # total estimated count 10 * 10 * 10 * 500
+        count = 0
+        for genome_id, genome in genomes:
+            total_frames = 0
+            max_frames = 500
+            start_time = time.time()
+
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            ep_r = []
+            # loop count pop in each gen
+            for ep in range(GENERATION_EP):  # run many episodes for the genome in case it's lucky
+                print("Genome_id ", genome_id, " episode ", ep)
+                accumulative_r = 0.  # stage longer to get a greater episode reward
+                timesteps = env.reset()
+
+                for a in agents:
+                    a.reset()
+
+                while True:
+                    count = count + 1
+                    total_frames += 1
+                    # it finally works
+                    current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = agents[0].step(timesteps[0])
+
+                    action_values = net.activate(current_state)
+                    action_index = np.argmax(action_values)
+                    action = agent.perform_action(timesteps[0], action_index, player_loc, enemy_loc, selected,
+                                                        player_count, enemy_count, distance, player_hp)
+                    accumulative_r += reward
+
+                    if max_frames and total_frames >= max_frames:
+                        break
+                    if timesteps[0].last():
+                        break
+                    timesteps = env.step([action])
+
+                ep_r.append(accumulative_r)
+
+            genome.fitness = np.max(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
+
+        print("Count", count)
+
+    pop.run(eval_genomes, 30)  # train 10 generations
+
+    # visualize training
+    visualize.plot_stats(stats, ylog=False, view=True)
+    visualize.plot_species(stats, view=True)
+
 
 def _main(unused_argv):
-  """Run an agent."""
-  stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
-  stopwatch.sw.trace = FLAGS.trace
+    """Run an agent."""
+    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
+    stopwatch.sw.trace = FLAGS.trace
 
-  # Map Name
-  mapName = FLAGS.map
+    # Map Name
+    mapName = FLAGS.map
 
-  globals()[mapName] = type(mapName, (maps.mini_games.MiniGame,), dict(filename=mapName))
+    globals()[mapName] = type(mapName, (maps.mini_games.MiniGame,), dict(filename=mapName))
 
-  maps.get(FLAGS.map)  # Assert the map exists.
+    maps.get(FLAGS.map)  # Assert the map exists.
 
-  agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
-  agent_cls = getattr(importlib.import_module(agent_module), agent_name)
+    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
+    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
-  threads = []
-  for _ in range(FLAGS.parallel - 1):
-    t = threading.Thread(target=run_thread, args=(agent_cls, FLAGS.map, False))
-    threads.append(t)
-    t.start()
+    # print("Agent Name", agent_name)
+    # print("Agent Module", agent_module)
+    # print("agent_cls", agent_cls)
 
-  run_thread(agent_cls, FLAGS.map, FLAGS.render)
+    threads = []
+    for _ in range(FLAGS.parallel - 1):
+        t = threading.Thread(target=run_thread, args=(agent_cls, FLAGS.map, False))
+        threads.append(t)
+        t.start()
 
-  for t in threads:
-    t.join()
+    run_thread(agent_cls, FLAGS.map, FLAGS.render)
 
-  if FLAGS.profile:
-    print(stopwatch.sw)
+    for t in threads:
+        t.join()
+
+    if FLAGS.profile:
+        print(stopwatch.sw)
+
 
 def entry_point():  # Needed so setup.py scripts work.
-  app.run(_main)
+    app.run(_main)
+
 
 if __name__ == "__main__":
-  app.run(_main)
+    app.run(_main)

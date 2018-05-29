@@ -75,6 +75,7 @@ class SmartAgent(object):
         self.previous_state = None
 
     def step(self, obs):
+
         # from the origin base.agent
         self.steps += 1
         self.reward += obs.reward
