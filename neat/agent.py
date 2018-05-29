@@ -3,7 +3,7 @@ import math
 import time
 import random
 import matplotlib.pyplot as plt
-from algorithms.dqn import DeepQNetwork
+from neat import DeepQNetwork
 from pysc2.lib import actions
 
 _NO_OP = actions.FUNCTIONS.no_op.id

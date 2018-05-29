@@ -20,13 +20,12 @@ from __future__ import print_function
 
 import importlib
 import threading
+import time
 
 from future.builtins import range  # pylint: disable=redefined-builtin
 
 from pysc2 import maps
 from pysc2.env import available_actions_printer
-# from pysc2.env import run_loop
-import run_loop
 from pysc2.env import sc2_env
 from pysc2.lib import stopwatch
 
@@ -39,11 +38,11 @@ FLAGS = flags.FLAGS
 # agent, agent_file, map
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "dqn_new.SmartAgent",
+flags.DEFINE_string("agent", "agent.SmartAgent",
                     "Which agent to run")
 
 # modify executing file name here
-flags.DEFINE_string("agent_file", "dqn_new",
+flags.DEFINE_string("agent_file", "agent",
                     "Which file to run")
 
 # edit map used here
@@ -87,26 +86,58 @@ def run_thread(agent_cls, map_name, visualize):
     agent_name = FLAGS.agent_file
 
     # set the path to save the models and graphs
-    path = 'models/' + agent_name
+    #path = 'models/' + agent_name
 
     # restore the model only if u have the previously trained a model
-    agent.dqn.load_model(path)
+    #agent.dqn.load_model(path)
 
     # run the steps
-    run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
+    run_loop([agent], env, FLAGS.max_agent_steps)
 
     # save the model
-    agent.dqn.save_model(path, 1)
+    #agent.dqn.save_model(path, 1)
 
     # plot cost and reward
     save_pic = True
-    agent.dqn.plot_cost(path, save=save_pic)
-    agent.dqn.plot_reward(path, save=save_pic)
-    agent.plot_player_hp(path, save=save_pic)
-    agent.plot_enemy_hp(path, save=save_pic)
+    #agent.dqn.plot_cost(path, save=save_pic)
+    #agent.dqn.plot_reward(path, save=save_pic)
+    #agent.plot_player_hp(path, save=save_pic)
+    #agent.plot_enemy_hp(path, save=save_pic)
 
     if FLAGS.save_replay:
       env.save_replay(agent_cls.__name__)
+
+def run_loop(agents, env, max_frames=0, max_episodes=0):
+  """A run loop to have agents and an environment interact."""
+  total_frames = 0
+  total_episodes = 0
+  start_time = time.time()
+
+  observation_spec = env.observation_spec()
+  action_spec = env.action_spec()
+  for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
+    agent.setup(obs_spec, act_spec)
+  try:
+    while not max_episodes or total_episodes < max_episodes:
+      total_episodes += 1
+      timesteps = env.reset()
+      for a in agents:
+        a.reset()
+      while True:
+        total_frames += 1
+        actions = [agent.step(timestep)
+                   for agent, timestep in zip(agents, timesteps)]
+        if max_frames and total_frames >= max_frames:
+          return
+        if timesteps[0].last():
+          break
+        timesteps = env.step(actions)
+  except KeyboardInterrupt:
+    pass
+  finally:
+    elapsed_time = time.time() - start_time
+    print("Took %.3f seconds for %s steps: %.3f fps" % (
+        elapsed_time, total_frames, total_frames / elapsed_time))
 
 def _main(unused_argv):
   """Run an agent."""
