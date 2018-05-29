@@ -71,9 +71,14 @@ flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
 
+### currently doing
+### 10 generations, 10 genomes, 10 episode each genome, 500 step(max) for each episode
+### estimated step count = 10*10*10*500 = 500000
+
 CONFIG = "./config"
 EP_STEP = 500  # maximum episode steps
-GENERATION_EP = 10  # evaluate by the minimum of 10-episode rewards
+GENERATION_EP = 10  # evaluate each genome by average 10-episode rewards
+GENERATION = 5
 TRAINING = False  # training or testing
 CHECKPOINT = 9  # test on this checkpoint
 
@@ -98,7 +103,7 @@ def run_thread(agent_cls, map_name, visualize):
         # path = 'models/' + agent_name
 
         # run the steps
-        run_loop([agent], env, FLAGS.max_agent_steps)
+        run_loop([agent], env)
 
         # training = True
         # if training:
@@ -115,7 +120,7 @@ def run_thread(agent_cls, map_name, visualize):
             env.save_replay(agent_cls.__name__)
 
 
-def run_loop(agents, env, max_frames=0, max_episodes=0):
+def run_loop(agents, env):
     """A run loop to have agents and an environment interact."""
     observation_spec = env.observation_spec()
     action_spec = env.action_spec()
@@ -136,24 +141,20 @@ def run_loop(agents, env, max_frames=0, max_episodes=0):
         # total estimated count 10 * 10 * 10 * 500
         count = 0
         for genome_id, genome in genomes:
-            total_frames = 0
-            max_frames = 500
-            start_time = time.time()
 
             net = neat.nn.FeedForwardNetwork.create(genome, config)
             ep_r = []
             # loop count pop in each gen
             for ep in range(GENERATION_EP):  # run many episodes for the genome in case it's lucky
-                print("Genome_id ", genome_id, " episode ", ep)
+                print("Genome_id ", genome_id, " episode ", ep, " count ", count)
                 accumulative_r = 0.  # stage longer to get a greater episode reward
                 timesteps = env.reset()
 
                 for a in agents:
                     a.reset()
 
-                while True:
+                for step in range(EP_STEP):
                     count = count + 1
-                    total_frames += 1
                     # it finally works
                     current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = agents[0].step(timesteps[0])
 
@@ -162,9 +163,6 @@ def run_loop(agents, env, max_frames=0, max_episodes=0):
                     action = agent.perform_action(timesteps[0], action_index, player_loc, enemy_loc, selected,
                                                         player_count, enemy_count, distance, player_hp)
                     accumulative_r += reward
-
-                    if max_frames and total_frames >= max_frames:
-                        break
                     if timesteps[0].last():
                         break
                     timesteps = env.step([action])
@@ -173,9 +171,8 @@ def run_loop(agents, env, max_frames=0, max_episodes=0):
 
             genome.fitness = np.max(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
 
-        print("Count", count)
-
-    pop.run(eval_genomes, 30)  # train 10 generations
+    # call and run the NEAT algorithm
+    pop.run(eval_genomes, GENERATION)  # train 10 generations
 
     # visualize training
     visualize.plot_stats(stats, ylog=False, view=True)
@@ -196,10 +193,6 @@ def _main(unused_argv):
 
     agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
     agent_cls = getattr(importlib.import_module(agent_module), agent_name)
-
-    # print("Agent Name", agent_name)
-    # print("Agent Module", agent_module)
-    # print("agent_cls", agent_cls)
 
     threads = []
     for _ in range(FLAGS.parallel - 1):

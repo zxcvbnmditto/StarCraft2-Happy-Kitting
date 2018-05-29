@@ -42,7 +42,6 @@ def run_loop(agents, env, max_frames=0, max_episodes=0):
                 # print(timesteps)
                 actions = [agent.step(timestep)
                            for agent, timestep in zip(agents, timesteps)]
-                print(actions)
                 if max_frames and total_frames >= max_frames:
                     return
                 if timesteps[0].last():

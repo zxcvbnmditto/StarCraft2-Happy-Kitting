@@ -91,13 +91,18 @@ class SmartAgent(object):
         # give reward by calculating opponents units lost hp
         for i in range(0, DEFAULT_ENEMY_COUNT):
             reward += ((ENEMY_MAX_HP - enemy_hp[i]) * 10. / ENEMY_MAX_HP)
+            #print("Enemy: ", reward)
 
         # give reward by remaining player units hp
         for i in range(0, DEFAULT_PLAYER_COUNT):
-            reward += (player_hp[i] * 10. / PLAYER_MAX_HP)
+            reward += (player_hp[i] * 5. / PLAYER_MAX_HP)
+            #print("Player: ", reward)
+
 
             if distance[0] <= 5 or distance[0] > 30:
-                reward -= -3.
+                reward += -3.
+
+        #print("Distance: ", reward)
 
         # get killed and lost unit reward from the map
         reward += obs.reward
