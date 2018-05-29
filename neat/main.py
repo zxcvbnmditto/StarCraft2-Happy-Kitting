@@ -77,10 +77,11 @@ flags.mark_flag_as_required("map")
 
 CONFIG = "./config"
 EP_STEP = 500  # maximum episode steps
-GENERATION_EP = 10  # evaluate each genome by average 10-episode rewards
-GENERATION = 5
-TRAINING = False  # training or testing
-CHECKPOINT = 3  # test on this checkpoint
+GENERATION_EP = 5 # evaluate each genome by average 10-episode rewards
+GENERATION = 10
+TRAINING = False # training or testing
+CONTINUE_TRAINING = True # Train from scratch or from previous checkpoints
+CHECKPOINT = 16  # test on this checkpoint
 
 
 # -----------------------------------------------------------------------------------------------
@@ -102,34 +103,30 @@ def run_thread(agent_cls, map_name, visualize):
         # set the path to save the models and graphs
         # path = 'models/' + agent_name
 
-        # run the steps
-        # run_loop([agent], env)
-
-
         if TRAINING:
-            run_loop([agent], env)
+            run_loop([agent], env, CONTINUE_TRAINING)
         else:
             evaluation([agent], env)
-
-        # plot cost and reward
-        save_pic = True
-        # agent.plot_player_hp(path, save=save_pic)
-        # agent.plot_enemy_hp(path, save=save_pic)
 
         if FLAGS.save_replay:
             env.save_replay(agent_cls.__name__)
 
 
-def run_loop(agents, env):
+def run_loop(agents, env, continue_training):
     """A run loop to have agents and an environment interact."""
     observation_spec = env.observation_spec()
     action_spec = env.action_spec()
     for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
         agent.setup(obs_spec, act_spec)
 
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+
+    if continue_training:
+        pop = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
+    else:
+        config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation, CONFIG)
-    pop = neat.Population(config)
+        pop = neat.Population(config)
+
 
     # recode history
     stats = neat.StatisticsReporter()

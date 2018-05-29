@@ -59,22 +59,13 @@ class SmartAgent(object):
         self.action_spec = None
 
         # self defined vars
-        self.fighting = False
-        self.win = 0
         self.player_hp = []
         self.enemy_hp = []
-        self.previous_enemy_hp = []
-        self.previous_player_hp = []
-
-        self.previous_action = None
-        self.previous_state = None
 
     def step(self, obs):
         # from the origin base.agent
         self.steps += 1
         self.reward += obs.reward
-
-        self.counter += 1
 
         # time.sleep(0.1)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
@@ -91,22 +82,16 @@ class SmartAgent(object):
         # give reward by calculating opponents units lost hp
         for i in range(0, DEFAULT_ENEMY_COUNT):
             reward += ((ENEMY_MAX_HP - enemy_hp[i]) * 10. / ENEMY_MAX_HP)
-            #print("Enemy: ", reward)
 
         # give reward by remaining player units hp
         for i in range(0, DEFAULT_PLAYER_COUNT):
             reward += (player_hp[i] * 5. / PLAYER_MAX_HP)
-            #print("Player: ", reward)
-
 
             if distance[0] <= 5 or distance[0] > 30:
                 reward += -3.
 
-        #print("Distance: ", reward)
-
         # get killed and lost unit reward from the map
         reward += obs.reward
-
         reward = int(reward)
 
         return reward
@@ -281,45 +266,7 @@ class SmartAgent(object):
         else:
             selected_index = 0
 
-        self.previous_action = 5
         return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[selected_index]])
-
-    # get_disabled_actions filters the redundant actions from the action space
-    def get_disabled_actions(self, player_loc, selected):
-        disabled_actions = []
-
-        index = -1
-
-        for i in range(0, DEFAULT_PLAYER_COUNT):
-            if selected[i] == 1:
-                index = i
-                break
-
-        x = player_loc[index][0]
-        y = player_loc[index][1]
-
-        # not selecting attack target if the previous actions is already attack target
-        if self.previous_action == smart_actions.index(ATTACK_TARGET):
-            disabled_actions.append(smart_actions.index(ATTACK_TARGET)) #0
-
-        # not selecting a specific move action if the unit cannot move toward that direction (at the border)
-        if y < 7:
-            disabled_actions.append(smart_actions.index(MOVE_UP)) #1
-
-        if y > 56:
-            disabled_actions.append(smart_actions.index(MOVE_DOWN)) #2
-
-        if x < 7:
-            disabled_actions.append(smart_actions.index(MOVE_LEFT)) #3
-
-        if x > 76:
-            disabled_actions.append(smart_actions.index(MOVE_RIGHT)) #4
-
-        # not selecting the same unit if the previous actions already attempts to select it
-        if self.previous_action == smart_actions.index(ACTION_SELECT_UNIT):
-            disabled_actions.append(smart_actions.index(ACTION_SELECT_UNIT)) #5
-
-        return disabled_actions
 
 
     def plot_player_hp(self, path, save):
@@ -347,8 +294,7 @@ class SmartAgent(object):
     def reset(self):
         self.episodes += 1
         # added instead of original
-        self.fighting = False
-        self.counter = 0
+
 
 
 
