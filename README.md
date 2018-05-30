@@ -1,16 +1,22 @@
 #### About
 This is a project of creating a Starcraft 2 bot applying reinforcement learning
 
-dqn_old is the older version of the work <br>
-dqn_new is the latest version of the work 
+You can find three agents applied with three different algorithm: DQN, DDPG, and NEAT.
+
+I set the inputs to be a list of features of length 11, which contains the information of player units' hp, coordinates, closest distance to the opponent's units and opponents hp and coordinates. (I know its a bit confusing) 
+
+The outputs are 6 actions: attack, move up, move down, move right, move left, and select unit. 
 
 All the mini maps used in this project can be found in the maps folder <br>
 You can also find some pretrained models in the models folder
 
 
 #### Environment:
->Python 3 <br>
->Tensorflow 1.7.0
+>Python 3 
+
+>Tensorflow 1.8.0
+
+>Neat-python 0.92
 
 #### Installation
 1. Clone this repository
@@ -37,10 +43,10 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 ```
  python3 -m main
 ```
-#### Modified the code
+#### Modified the code for ddpg or dqn
 1. Change the flags in main.py if needed
-2. Change the option of restore model, load model, and plot in main.py if needed
-3. Change the important map info in the agent file dqn_new.py
+2. Change the option of save model, load model, and save_pic in main.py if needed
+3. Change the important map info in the agent file
 ```
 DEFAULT_ENEMY_COUNT
 DEFAULT_PLAYER_COUNT
@@ -48,11 +54,37 @@ ENEMY_MAX_HP
 PLAYER_MAX_HP
 ```
 
-#### Use Tensorboard to visualize the data
+#### Use Tensorboard to visualize the data for ddpg or dqn
 ```
 Run this after you have already run the agent at least once
 tensorboard --logdir logs/
 ```
+#### Modified the code for neat
+1. Change the important flags in main.py if needed
+2. Change these global variables variables to control the running time in main.py
+```
+Here are some most important variables that you should keep an eye on
+
+GENERATION = 11 # num of generation
+pop # num of genomes for each generation(this is in config)
+GENERATION_EP = 5 # evaluate each genome by average 10-episode rewards
+EP_STEP = 500  # maximum episode steps
+```
+3. Save, load, evaluation
+```
+Evaluation generates the network graph
+
+TRAINING # training or evaluating
+CONTINUE_TRAINING # Train from scratch or from previous checkpoints
+CHECKPOINT # this number is used to specified where the saved neat model should be restored for evaluation or continue training
+```
+4. You may also change the parameters in config file (If u know the effect)
+5. Currently, the checkpoint file is set to be saved automatically after each generation. You can modify it by changing the number of this line
+```
+pop.add_reporter(neat.Checkpointer(<num-can-be-changed>))
+```
+6. Fitness function in main.py
+7. Reward in agent.py
 
 #### Current Progress:
 1. Using the updated pysc2 API
@@ -63,13 +95,14 @@ tensorboard --logdir logs/
 6. Prescipted a few initial actions of the agent to increase the performance by not wasting steps searching the enemy cluelessly
 7. Temporarily fix and generalize the select_point action
 8. Generalize the code so it is easy to be modified and tested
+9. Applied Tensorboard to dqn and modified the DQN network structure
 
 
 #### Coming up:
 1. Test the performance of the agent and update the action, reward, and extracted features if needed
-2. Train the dqn agent more
-3. Add more layer for the dqn network
-4. Try out the tensorboard to keep track of the DQN variables
-5. Try out the cooling_weapon cycle
-6. Start to implementing the DDPG agent for the 2V1 map
+2. Applied tensorboard to the ddpg network and potentially modified the ddpg network
+3. Tweaking :)
 
+#### Reminder
+1. Neat is still under the process of developing. It may have some bugs not being fixed yet
+2. I will have to double check the ddpg algorithm implemenation, especially the a_loss and gradients

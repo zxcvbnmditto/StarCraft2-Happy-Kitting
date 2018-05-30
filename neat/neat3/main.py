@@ -83,9 +83,7 @@ GENERATION_EP = 5 # evaluate each genome by average 10-episode rewards
 GENERATION = 11
 TRAINING = False # training or testing
 CONTINUE_TRAINING = False # Train from scratch or from previous checkpoints
-CHECKPOINT = 9  # test on this checkpoint
-
-
+CHECKPOINT = 10  # test on this checkpoint
 # -----------------------------------------------------------------------------------------------
 def run_thread(agent_cls, map_name, visualize):
     with sc2_env.SC2Env(
@@ -120,7 +118,7 @@ def run_loop(agents, env, continue_training):
     for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
         agent.setup(obs_spec, act_spec)
 
-
+    # restore from the model or not
     if continue_training:
         pop = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
     else:
@@ -128,12 +126,11 @@ def run_loop(agents, env, continue_training):
                          neat.DefaultSpeciesSet, neat.DefaultStagnation, CONFIG)
         pop = neat.Population(config)
 
-
     # recode history
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    pop.add_reporter(neat.Checkpointer(1)) # guessing: num represents the saving interval for generation
+    pop.add_reporter(neat.Checkpointer(1)) # num represents the saving interval for generation
 
     def eval_genomes(genomes, config):
         # total estimated count 10 * 10 * 10 * 500
@@ -224,15 +221,6 @@ def evaluation(agents, env):
                   -7: 'player_y_1', -8: 'player_x_2', -9: 'player_y_2', -10: 'distance_1', -11: 'distance_2',
                   0: 'attack', 1: 'up', 2: 'down', 3: 'left', 4: 'right', 5: 'select'}
     visualize.draw_net(p.config, winner, True, node_names=node_names)
-
-    net = neat.nn.FeedForwardNetwork.create(winner, p.config)
-    while True:
-        s = env.reset()
-        while True:
-            env.render()
-            a = np.argmax(net.activate(s))
-            s, r, done, _ = env.step(a)
-            if done: break
 
 def _main(unused_argv):
     """Run an agent."""
