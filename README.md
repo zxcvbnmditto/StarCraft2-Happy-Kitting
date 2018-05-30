@@ -7,6 +7,8 @@ I set the inputs to be a list of features of length 11, which contains the infor
 
 The outputs are 6 actions: attack, move up, move down, move right, move left, and select unit. 
 
+The dqn and ddpg models are pretrained with 25000 steps, and the neat model is pretrained with 10 generations. 
+
 All the mini maps used in this project can be found in the maps folder <br>
 You can also find some pretrained models in the models folder
 
