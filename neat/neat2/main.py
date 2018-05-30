@@ -80,10 +80,10 @@ flags.mark_flag_as_required("map")
 CONFIG = "./config"
 EP_STEP = 500  # maximum episode steps
 GENERATION_EP = 5 # evaluate each genome by average 10-episode rewards
-GENERATION = 20
+GENERATION = 11
 TRAINING = False # training or testing
 CONTINUE_TRAINING = True # Train from scratch or from previous checkpoints
-CHECKPOINT = 57  # test on this checkpoint
+CHECKPOINT = 50  # test on this checkpoint
 
 
 # -----------------------------------------------------------------------------------------------

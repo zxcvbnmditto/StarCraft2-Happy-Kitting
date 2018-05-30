@@ -80,10 +80,10 @@ flags.mark_flag_as_required("map")
 CONFIG = "./config"
 EP_STEP = 500  # maximum episode steps
 GENERATION_EP = 5 # evaluate each genome by average 10-episode rewards
-GENERATION = 20
+GENERATION = 11
 TRAINING = False # training or testing
-CONTINUE_TRAINING = True # Train from scratch or from previous checkpoints
-CHECKPOINT = 57  # test on this checkpoint
+CONTINUE_TRAINING = False # Train from scratch or from previous checkpoints
+CHECKPOINT = 9  # test on this checkpoint
 
 
 # -----------------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ def run_loop(agents, env, continue_training):
 
                 ep_r.append(accumulative_r)
 
-            genome.fitness = np.max(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
+            genome.fitness = np.min(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
 
     global generation
     generation = 0
