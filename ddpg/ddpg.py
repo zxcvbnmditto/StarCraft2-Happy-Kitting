@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 #####################  hyper parameters  ####################
 
-LR_A = 0.001    # learning rate for actor
-LR_C = 0.002    # learning rate for critic
+LR_A = 0.1    # learning rate for actor
+LR_C = 0.2    # learning rate for critic
 GAMMA = 0.9     # reward discount
 TAU = 0.01      # soft replacement
 MEMORY_CAPACITY = 5000
@@ -45,8 +45,10 @@ class DDPG(object):
         self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)]
                              for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
 
+
         with tf.variable_scope('q_target'):
             q_target = self.R + GAMMA * q_
+            tf.summary.histogram('q_target', q_target)
 
         # in the feed_dic for the td_error, the self.a should change to actions in memory
         with tf.variable_scope('td_error'):
@@ -55,6 +57,7 @@ class DDPG(object):
 
         with tf.variable_scope('ctrain'):
             self.ctrain = tf.train.AdamOptimizer(LR_C).minimize(td_error, var_list=self.ce_params)
+            #tf.summary.histogram('ctrain', self.ctrain)
 
         with tf.variable_scope('a_loss'):
             self.a_loss = - tf.reduce_mean(q)    # maximize the q
@@ -62,6 +65,7 @@ class DDPG(object):
 
         with tf.variable_scope('atrain'):
             self.atrain = tf.train.AdamOptimizer(LR_A).minimize(self.a_loss, var_list=self.ae_params)
+            #tf.summary.histogram('atrain', self.atrain)
 
         self.merged_summary = tf.summary.merge_all()
         self.writer = tf.summary.FileWriter('logs', self.sess.graph)
@@ -86,8 +90,11 @@ class DDPG(object):
 
         # redistribute the prob after considering disabled actions
         # integrate disabled actions into _build_a ???
-        updated_actions_probs = np.array([actions_probs[0][x] / sum(sum(actions_probs)) for x in range(0, self.a_dim)])
+        updated_actions_probs = np.array([actions_probs[0][x] / sum(sum(actions_probs)) for x in range(0,
+                                                                                                       self.a_dim)])
+
         action = np.random.choice(a=range(len(updated_actions_probs)), p=updated_actions_probs.flatten())
+
         return action
 
 
@@ -134,6 +141,7 @@ class DDPG(object):
             w1_a = tf.get_variable('w1_a', [self.a_dim, n_l1], trainable=trainable)
             b1 = tf.get_variable('b1', [1, n_l1], trainable=trainable)
             net = tf.nn.relu(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
+
             return tf.layers.dense(net, 1, trainable=trainable)  # Q(s,a)
 
     def plot_reward(self, path, save):

@@ -49,9 +49,9 @@ flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
 
 # Change the three booleans to save or not save the models
-LOAD_MODEL = True
-SAVE_MODEL = False
-SAVE_PIC = False
+LOAD_MODEL = False
+SAVE_MODEL = True
+SAVE_PIC = True
 
 # -----------------------------------------------------------------------------------------------
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")

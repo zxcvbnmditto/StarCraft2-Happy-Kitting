@@ -61,7 +61,7 @@ class SmartAgent(object):
 
         self.ddpg = DDPG(
             a_dim=len(smart_actions),
-            s_dim=11, # one of the most important data that needs to be update manually
+            s_dim=5, # one of the most important data that needs to be update manually
         )
 
         # self defined vars
@@ -105,6 +105,7 @@ class SmartAgent(object):
 
         # get the disabled actions and used it when choosing actions
         disabled_actions = self.get_disabled_actions(player_loc, selected)
+        #disabled_actions = []
         rl_action = self.ddpg.choose_action(np.array(current_state), disabled_actions)
         smart_action = smart_actions[rl_action]
 
@@ -129,7 +130,7 @@ class SmartAgent(object):
         for i in range(0, DEFAULT_PLAYER_COUNT):
             reward += (player_hp[i] * 5. / PLAYER_MAX_HP)
 
-            if distance[0] <= 5 or distance[0] > 30:
+            if distance[0] <= 5 or distance[0] > 25:
                 reward -= -3.
 
         # get killed and lost unit reward from the map
@@ -194,11 +195,11 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
+        current_state = np.hstack((feature1, feature2, feature5))
 
         return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
-    # make the desired action calculated by DQN
+    # make the desired action calculated by DQNLR_C
     def perform_action(self, obs, action, unit_locs, enemy_locs, selected, player_count, enemy_count, distance, player_hp):
         index = -1
 
