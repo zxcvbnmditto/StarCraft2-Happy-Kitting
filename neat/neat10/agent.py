@@ -90,7 +90,6 @@ class SmartAgent(object):
             reward += (player_hp[i])
             reward -= (distance[i] - 10) ** 2
 
-
         if reward < 0:
             reward = 0
 

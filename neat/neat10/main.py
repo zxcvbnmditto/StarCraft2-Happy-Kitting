@@ -81,10 +81,10 @@ flags.mark_flag_as_required("map")
 CONFIG = "./config"
 EP_STEP = 400  # maximum episode steps
 GENERATION_EP = 5  # evaluate each genome by average 10-episode rewards
-GENERATION = 15
-TRAINING = False  # training or testing
+GENERATION = 22
+TRAINING = True  # training or testing
 CONTINUE_TRAINING = True  # Train from scratch or from previous checkpoints
-CHECKPOINT = 29  # test on this checkpoint
+CHECKPOINT = 50  # test on this checkpoint
 
 
 # -----------------------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ def run_loop(agents, env, continue_training):
         # total estimated count 10 * 10 * 10 * 500
         global generation
         generation = generation + 1
-        count = 0
+        count, previous_count = 0, 0
         for genome_id, genome in genomes:
 
             net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -154,8 +154,8 @@ def run_loop(agents, env, continue_training):
                 for a in agents:
                     a.reset()
 
+                previous_count = count
                 for step in range(EP_STEP):
-                    count = count + 1
                     # it finally works
                     current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = \
                     agents[0].step(timesteps[0])
@@ -169,6 +169,7 @@ def run_loop(agents, env, continue_training):
 
                             action = actions.FunctionCall(actions.FUNCTIONS.Move_screen.id, [[0], enemy_loc[0]])
                     else:
+                        count = count + 1
                         action_values = net.activate(current_state)
                         # action_index = np.argmax(action_values)
 
@@ -176,16 +177,16 @@ def run_loop(agents, env, continue_training):
 
                         action = agents[0].perform_action(timesteps[0], action_values, player_loc, enemy_loc, selected,
                                                           player_count, enemy_count, distance, player_hp)
-                        print(reward, accumulative_r)
                         accumulative_r += reward
 
                     if timesteps[0].last():
                         break
                     timesteps = env.step([action])
 
+                # print(accumulative_r / (count - previous_count), count - previous_count)
                 ep_r.append(accumulative_r)
 
-            genome.fitness = np.max(ep_r) / float(EP_STEP)  # depends on the minimum episode reward
+            genome.fitness = np.max(ep_r) / float(EP_STEP) # depends on the minimum episode reward
 
     global generation
     generation = 0
