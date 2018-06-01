@@ -1,4 +1,13 @@
-earlier ones should be discarded
+
+neat1 => pop=15, relu, fitness=>mean
+neat2 => pop=50, relu, fitness=>mean
+neat3 => pop=15, relu, fitness=>max
+neat4 => pop=50, relu, fitness=>max
+
+Seems like pop size doesn't matter too much, mostly still govern by some luck and reward
+Mean fitness works better Max fitness, so we can probably conclude that max fitness is too biased
+
+
 neat7 => first time using the initial scripted 
 neat8 => relu, center distance 5
 neat9 => sigmoid, center distance 5
