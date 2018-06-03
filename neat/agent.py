@@ -1,6 +1,5 @@
 import numpy as np
 import math
-import time
 import random
 import matplotlib.pyplot as plt
 from dqn import DeepQNetwork
@@ -37,7 +36,8 @@ smart_actions = [
     MOVE_UP,
     MOVE_DOWN,
     MOVE_LEFT,
-    MOVE_RIGHT
+    MOVE_RIGHT,
+    ACTION_SELECT_UNIT
 ]
 
 # Change this if using a different map
@@ -60,13 +60,13 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            11, # one of the most important data that needs to be update manually
+            5, # one of the most important data that needs to be update manually
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=200,
-            memory_size=5000,
-            batch_size=32,
+            memory_size=50000,
+            batch_size=320,
             e_greedy_increment=None,
             output_graph=True
         )
@@ -88,10 +88,6 @@ class SmartAgent(object):
         self.reward += obs.reward
 
         self.counter += 1
-
-        if self.dqn.memory_counter >= 200 and self.dqn.memory_counter % 5 == 0:
-            self.dqn.learn()
-
         # time.sleep(0.1)
         current_state, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = self.extract_features(obs)
 
@@ -107,47 +103,17 @@ class SmartAgent(object):
 
             return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, enemy_loc[0]])
 
-        # Default case => Select unit
-        # select the unit that is closest to the enemy
-        # if same distance, pick the one with lower hp
-        # if same distance and hp, randomly select one
-        closest_indices = []
-        closest_index = distance.index(min(distance))
-
-        for i in range(0, player_count):
-            if distance[i] == distance[closest_index]:
-                closest_indices.append(i)
-
-        lowest_hp_indices = []
-        lowest_hp_index = player_hp.index(min(player_hp))
-
-        for i in range(0, player_count):
-            if player_hp[i] == player_hp[lowest_hp_index]:
-                lowest_hp_indices.append(i)
-
-        common_indices = list(set(closest_indices).intersection(lowest_hp_indices))
-
-        if len(common_indices) != 0:
-            selected_index = random.choice(common_indices)
-        elif len(closest_indices) != 0:
-            selected_index = random.choice(closest_indices)
-        else:
-            selected_index = 0
-
-        if selected[selected_index] == 0 or (selected[0] == 1 and selected[1] == 1):
-            return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, player_loc[selected_index]])
-
-        # get the disabled actions and used it when choosing actions
-        # disabled_actions = self.get_disabled_actions(player_loc, selected)
-        disabled_actions = []
-        rl_action = self.dqn.choose_action(np.array(current_state), disabled_actions)
-        smart_action = smart_actions[rl_action]
-
         # record the transitions to memory and learn by DQN
         if self.previous_action is not None:
-            reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count, rl_action, selected, player_loc,enemy_loc)
+            reward = self.get_reward(obs, distance, player_hp, enemy_hp, player_count, enemy_count)
 
             self.dqn.store_transition(np.array(self.previous_state), self.previous_action, reward, np.array(current_state))
+            self.dqn.learn()
+
+        # get the disabled actions and used it when choosing actions
+        disabled_actions = self.get_disabled_actions(player_loc, selected)
+        rl_action = self.dqn.choose_action(np.array(current_state), disabled_actions)
+        smart_action = smart_actions[rl_action]
 
         self.previous_state = current_state
         self.previous_action = rl_action
@@ -159,50 +125,24 @@ class SmartAgent(object):
 
         return next_action
 
-    def get_reward(self, obs, distance, player_hp, enemy_hp, player_count, enemy_count, rl_action, selected, unit_locs, enemy_loc):
-        reward = 0.
-        selected_index = -1
-
-        for i in range(0, DEFAULT_PLAYER_COUNT):
-            if selected[i] == 1:
-                selected_index = i
-
-        closest_unit_index = distance.index(min(distance))
-
-        # print("selected = ", selected_index)
-        # print("closest index = ", closest_unit_index)
-        # if (index == unit_index):
-        #     reward += 2
-        x = unit_locs[selected_index][0]
-        y = unit_locs[selected_index][1]
-
-        if x < 10 and rl_action == smart_actions.index(MOVE_LEFT):
-            return -10
-
-        if x > 74 and rl_action == smart_actions.index(MOVE_RIGHT):
-            return -10
-
-        if y < 10 and rl_action == smart_actions.index(MOVE_UP):
-            return -10
-
-        if y > 58 and rl_action == smart_actions.index(MOVE_DOWN):
-            return -10
-
-        if distance[selected_index] < 10 or distance[selected_index] > 25:
-            return -10
+    def get_reward(self, obs, distance, player_hp, enemy_hp, player_count, enemy_count):
+        reward = 0
 
         # give reward by calculating opponents units lost hp
         for i in range(0, DEFAULT_ENEMY_COUNT):
-            reward += (ENEMY_MAX_HP - enemy_hp[i]) * 2
+            reward += int((ENEMY_MAX_HP - enemy_hp[i]) * 10 / ENEMY_MAX_HP)
+            #reward += int(self.previous_enemy_hp[i] - enemy_hp[i])
 
         # give reward by remaining player units hp
         for i in range(0, DEFAULT_PLAYER_COUNT):
-            reward += (player_hp[i])
+            reward += int(player_hp[i] * 5 / PLAYER_MAX_HP)
+            # reward -= int(self.previous_player_hp[i] - player_hp[i])
+
+            if distance[i] <= 5:
+                reward -= 3
 
         # get killed and lost unit reward from the map
-        reward = int(reward)
-        print(reward)
-
+        reward += obs.reward
         return reward
 
     # extract all the desired features as inputs for the DQN
@@ -223,7 +163,7 @@ class SmartAgent(object):
         for i in range(0, var.shape[0]):
             if var[i][_UNIT_ALLIANCE] == _PLAYER_HOSTILE:
                 enemy.append((var[i][_UNIT_X], var[i][_UNIT_Y]))
-                enemy_hp.append(var[i][_UNIT_HEALTH] + var[i][_UNIT_SHIELD ])
+                enemy_hp.append(var[i][_UNIT_HEALTH] + var[i][_UNIT_SHIELD])
                 enemy_unit_count += 1
             else:
                 player.append((var[i][_UNIT_X], var[i][_UNIT_Y]))
@@ -260,7 +200,7 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
+        current_state = np.hstack((feature1, feature2, feature5))
 
         return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
@@ -283,100 +223,100 @@ class SmartAgent(object):
         elif action == MOVE_UP:
             if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
                 x = x
-                y = y - 8
+                y = y - 15
 
-                if 3 > x:
-                    x = 3
-                elif x > 79:
-                    x = 79
+                if 0 > x:
+                    x = 0
+                elif x > 83:
+                    x = 83
 
-                if 3 > y:
-                    y = 3
-                elif y > 59:
-                    y = 59
+                if 0 > y:
+                    y = 0
+                elif y > 83:
+                    y = 83
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])  # x,y => col,row
 
         elif action == MOVE_DOWN:
             if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
                 x = x
-                y = y + 8
+                y = y + 15
 
-                if 3 > x:
-                    x = 3
-                elif x > 79:
-                    x = 79
+                if 0 > x:
+                    x = 0
+                elif x > 83:
+                    x = 83
 
-                if 3 > y:
-                    y = 3
-                elif y > 59:
-                    y = 59
+                if 0 > y:
+                    y = 0
+                elif y > 83:
+                    y = 83
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
         elif action == MOVE_LEFT:
             if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x - 8
+                x = x - 15
                 y = y
 
-                if 3 > x:
-                    x = 3
-                elif x > 79:
-                    x = 79
+                if 0 > x:
+                    x = 0
+                elif x > 83:
+                    x = 83
 
-                if 3 > y:
-                    y = 3
-                elif y > 59:
-                    y = 59
+                if 0 > y:
+                    y = 0
+                elif y > 83:
+                    y = 83
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
         elif action == MOVE_RIGHT:
             if _MOVE_SCREEN in obs.observation["available_actions"] and index != -1:
-                x = x + 8
+                x = x + 15
                 y = y
 
-                if 3 > x:
-                    x = 3
-                elif x > 79:
-                    x = 79
+                if 0 > x:
+                    x = 0
+                elif x > 83:
+                    x = 83
 
-                if 3 > y:
-                    y = 3
-                elif y > 59:
-                    y = 59
+                if 0 > y:
+                    y = 0
+                elif y > 83:
+                    y = 83
 
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
 
-        # # Default case => Select unit
-        # # select the unit that is closest to the enemy
-        # # if same distance, pick the one with lower hp
-        # # if same distance and hp, randomly select one
-        # closest_indices = []
-        # closest_index = distance.index(min(distance))
-        #
-        # for i in range(0, player_count):
-        #     if distance[i] == distance[closest_index]:
-        #         closest_indices.append(i)
-        #
-        # lowest_hp_indices = []
-        # lowest_hp_index = player_hp.index(min(player_hp))
-        #
-        # for i in range(0, player_count):
-        #     if player_hp[i] == player_hp[lowest_hp_index]:
-        #         lowest_hp_indices.append(i)
-        #
-        # common_indices = list(set(closest_indices).intersection(lowest_hp_indices))
-        #
-        # if len(common_indices) != 0:
-        #     selected_index = random.choice(common_indices)
-        # elif len(closest_indices) != 0:
-        #     selected_index = random.choice(closest_indices)
-        # else:
-        #     selected_index = 0
-        #
-        # self.previous_action = 5
-        return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
+        # Default case => Select unit
+        # select the unit that is closest to the enemy
+        # if same distance, pick the one with lower hp
+        # if same distance and hp, randomly select one
+        closest_indices = []
+        closest_index = distance.index(min(distance))
+
+        for i in range(0, player_count):
+            if distance[i] == distance[closest_index]:
+                closest_indices.append(i)
+
+        lowest_hp_indices = []
+        lowest_hp_index = player_hp.index(min(player_hp))
+
+        for i in range(0, player_count):
+            if player_hp[i] == player_hp[lowest_hp_index]:
+                lowest_hp_indices.append(i)
+
+        common_indices = list(set(closest_indices).intersection(lowest_hp_indices))
+
+        if len(common_indices) != 0:
+            selected_index = random.choice(common_indices)
+        elif len(closest_indices) != 0:
+            selected_index = random.choice(closest_indices)
+        else:
+            selected_index = 0
+
+        self.previous_action = 5
+        return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[selected_index]])
 
     # get_disabled_actions filters the redundant actions from the action space
     def get_disabled_actions(self, player_loc, selected):
@@ -397,16 +337,16 @@ class SmartAgent(object):
             disabled_actions.append(smart_actions.index(ATTACK_TARGET)) #0
 
         # not selecting a specific move action if the unit cannot move toward that direction (at the border)
-        if y < 7:
+        if y <= 5:
             disabled_actions.append(smart_actions.index(MOVE_UP)) #1
 
-        if y > 56:
+        if y >= 78:
             disabled_actions.append(smart_actions.index(MOVE_DOWN)) #2
 
-        if x < 7:
+        if x <= 5:
             disabled_actions.append(smart_actions.index(MOVE_LEFT)) #3
 
-        if x > 76:
+        if x >= 78:
             disabled_actions.append(smart_actions.index(MOVE_RIGHT)) #4
 
         # not selecting the same unit if the previous actions already attempts to select it
@@ -421,8 +361,7 @@ class SmartAgent(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/player_hp.png')
-        plt.close()
-
+        plt.show()
 
     def plot_enemy_hp(self, path, save):
         plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp)
@@ -430,8 +369,7 @@ class SmartAgent(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/enemy_hp.png')
-        plt.close()
-
+        plt.show()
 
     # from the origin base.agent
     def setup(self, obs_spec, action_spec):
@@ -444,6 +382,8 @@ class SmartAgent(object):
         # added instead of original
         self.fighting = False
         self.counter = 0
+        self.previous_enemy_hp = [ENEMY_MAX_HP]
+        self.previous_player_hp = [PLAYER_MAX_HP, PLAYER_MAX_HP]
 
 
 

@@ -233,7 +233,8 @@ class DeepQNetwork(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/reward.png')
-        plt.show()
+        plt.close()
+
 
     def plot_cost(self, path, save):
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
@@ -241,7 +242,7 @@ class DeepQNetwork(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/cost.png')
-        plt.show()
+        plt.close()
 
     def save_model(self, path, count):
         self.saver.save(self.sess, path + '/model.pkl', count)

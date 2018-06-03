@@ -273,7 +273,6 @@ class SmartAgent(object):
 
         return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, unit_locs[selected_index]])
 
-
     def plot_player_hp(self, path, save):
         plt.plot(np.arange(len(self.player_hp)), self.player_hp, 'b-')
         plt.ylabel('player hp')
@@ -281,8 +280,6 @@ class SmartAgent(object):
         if save:
             plt.savefig(path + '/player_hp.png')
         plt.close()
-
-
 
     def plot_enemy_hp(self, path, save):
         plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp, 'r-')
@@ -292,7 +289,6 @@ class SmartAgent(object):
             plt.savefig(path + '/enemy_hp.png')
         plt.close()
 
-
     def plot_reward(self, path, save):
         plt.plot(np.arange(len(self.my_reward)), self.my_reward, '#33FF90')
         plt.ylabel('reward')
@@ -300,8 +296,6 @@ class SmartAgent(object):
         if save:
             plt.savefig(path + '/reward.png')
         plt.close()
-
-
 
     def plot_all(self, path, save):
         plt.plot(np.arange(len(self.player_hp)), self.player_hp, 'b-', label="player_hp")
