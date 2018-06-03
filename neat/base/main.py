@@ -18,23 +18,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import matplotlib
+
+matplotlib.use('Agg')
 import importlib
+import neat
+import visualize
+import os
+import shutil
+import numpy as np
 import threading
-import time
 
 from future.builtins import range  # pylint: disable=redefined-builtin
-
 from pysc2 import maps
 from pysc2.env import available_actions_printer
 from pysc2.env import sc2_env
 from pysc2.lib import stopwatch
 from pysc2.lib import actions
-
-import neat
-import visualize
-import numpy as np
-import multiprocessing as mp
-
 from absl import app
 from absl import flags
 
@@ -46,10 +46,6 @@ FLAGS = flags.FLAGS
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
 flags.DEFINE_string("agent", "agent.SmartAgent",
                     "Which agent to run")
-
-# modify executing file name here
-flags.DEFINE_string("agent_file", "agent",
-                    "Which file to run")
 
 # edit map used here
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
@@ -74,18 +70,15 @@ flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
 
-### currently doing
-### 10 generations, 10 genomes, 10 episode each genome, 500 step(max) for each episode
-### estimated step count = 10*10*10*500 = 500000
-
 CONFIG = "./config"
 EP_STEP = 400  # maximum episode steps
-GENERATION_EP = 5  # evaluate each genome by average 10-episode rewards
-GENERATION = 21
-TRAINING = True  # training or testing
-CONTINUE_TRAINING = False  # Train from scratch or from previous checkpoints
-SAVE_PIC = True
-CHECKPOINT = 50  # test on this checkpoint
+GENERATION_EP = 1  # evaluate each genome by average n episodes
+END_GENERATION = 10  # specify the last generation
+CHECKPOINT = 0  # specify the starting generation
+TRAINING = True  # training or evaluating
+EVALUATING = True
+# CONTINUE_TRAINING = True  # Train from scratch or from previous checkpoints
+SAVE_PIC = True  # set true to save the customize plots
 
 
 # -----------------------------------------------------------------------------------------------
@@ -102,24 +95,17 @@ def run_thread(agent_cls, map_name, visualize):
         env = available_actions_printer.AvailableActionsPrinter(env)
         agent = agent_cls()
 
-        agent_name = FLAGS.agent_file
-
-        # set the path to save the models and graphs
-        path = 'graphs/'
-
         if TRAINING:
-            run_loop([agent], env, CONTINUE_TRAINING)
-        else:
-            evaluation([agent], env)
+            run_loop([agent], env)
 
-        agent.plot_player_hp(path, save=SAVE_PIC)
-        agent.plot_enemy_hp(path, save=SAVE_PIC)
+        if EVALUATING:
+            evaluation([agent], env)
 
         if FLAGS.save_replay:
             env.save_replay(agent_cls.__name__)
 
 
-def run_loop(agents, env, continue_training):
+def run_loop(agents, env):
     """A run loop to have agents and an environment interact."""
     observation_spec = env.observation_spec()
     action_spec = env.action_spec()
@@ -127,24 +113,34 @@ def run_loop(agents, env, continue_training):
         agent.setup(obs_spec, act_spec)
 
     # restore from the model or not
-    if continue_training:
-        pop = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
-    else:
+    if CHECKPOINT == 0:
         config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                              neat.DefaultSpeciesSet, neat.DefaultStagnation, CONFIG)
         pop = neat.Population(config)
+    else:
+        pop = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
 
     # recode history
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    pop.add_reporter(neat.Checkpointer(1))  # num represents the saving interval for generation
+    pop.add_reporter(neat.Checkpointer(generation_interval=1, filename_prefix="neat-checkpoint-"))  # num
+
+    # pop.add_reporter(neat.Checkpointer(generation_interval=1, filename_prefix="graphs/neat-checkpoint-"))  # num
+
+    # represents
 
     def eval_genomes(genomes, config):
         # total estimated count 10 * 10 * 10 * 500
         global generation
-        generation = generation + 1
         count, previous_count = 0, 0
+
+        # set the path to save the models and graphs
+        path = 'graphs/gen' + str(generation) + '/train'
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         for genome_id, genome in genomes:
 
             net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -162,7 +158,7 @@ def run_loop(agents, env, continue_training):
                 for step in range(EP_STEP):
                     # it finally works
                     current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = \
-                    agents[0].step(timesteps[0])
+                        agents[0].step(timesteps[0])
 
                     if not agents[0].fighting:
                         for i in range(0, player_count):
@@ -175,7 +171,6 @@ def run_loop(agents, env, continue_training):
                     else:
                         count = count + 1
                         action_values = net.activate(current_state)
-                        # action_index = np.argmax(action_values)
 
                         action_values = np.random.choice(a=range(6), p=softmax(action_values))
 
@@ -187,34 +182,52 @@ def run_loop(agents, env, continue_training):
                         break
                     timesteps = env.step([action])
 
-                print(accumulative_r / (count - previous_count), count - previous_count)
                 ep_r.append(accumulative_r / (count - previous_count))
 
             genome.fitness = np.max(ep_r)  # depends on the minimum episode reward
+            print(genome.fitness)
+
+        # Plot graphs
+        thread1 = threading.Thread(target=agents[0].plot_reward(path, save=SAVE_PIC), name='T1')
+        thread2 = threading.Thread(target=agents[0].plot_player_hp(path, save=SAVE_PIC), name='T2')
+        thread3 = threading.Thread(target=agents[0].plot_enemy_hp(path, save=SAVE_PIC), name='T3')
+        thread4 = threading.Thread(target=agents[0].plot_all(path, save=SAVE_PIC), name='T4')
+
+        thread1.start()
+        thread2.start()
+        thread3.start()
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        thread4.start()
+        thread4.join()
+        generation = generation + 1
 
     global generation
-    generation = 0
+    generation = CHECKPOINT
     # call and run the NEAT algorithm
-    pop.run(eval_genomes, GENERATION)  # train 10 generations
+    pop.run(eval_genomes, END_GENERATION - CHECKPOINT + 1)  # train 10 generations:
 
     # visualize training
-    visualize.plot_stats(stats, ylog=False, view=True)
-    visualize.plot_species(stats, view=True)
+    visualize.plot_stats(stats, ylog=False, view=False)
+    visualize.plot_species(stats, view=False)
 
-
-def softmax(x):
-    x = x - np.max(x)
-    exp_x = np.exp(x)
-    softmax_x = exp_x / np.sum(exp_x)
-    return softmax_x
+    for i in range(CHECKPOINT, END_GENERATION + 1):
+        shutil.copy2(src="neat-checkpoint-" + str(i), dst='graphs/gen' + str(i))
 
 
 def evaluation(agents, env):
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
-
     def eval_genomes(genomes, config):
         # total estimated count 10 * 10 * 10 * 500
+        global generation
         count, previous_count = 0, 0
+
+        # set the path to save the models and graphs
+        path = 'graphs/gen' + str(generation) + '/eval'
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         for genome_id, genome in genomes:
 
             net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -257,18 +270,47 @@ def evaluation(agents, env):
                         break
                     timesteps = env.step([action])
 
-                print(accumulative_r / (count - previous_count), count - previous_count)
                 ep_r.append(accumulative_r / (count - previous_count))
 
             genome.fitness = np.max(ep_r)  # depends on the minimum episode reward
+            print(genome.fitness)
 
-    winner = p.run(eval_genomes, 1)  # find the winner in restored population
+        # Plot graphs
+        thread1 = threading.Thread(target=agents[0].plot_reward(path, save=SAVE_PIC), name='T1')
+        thread2 = threading.Thread(target=agents[0].plot_player_hp(path, save=SAVE_PIC), name='T2')
+        thread3 = threading.Thread(target=agents[0].plot_enemy_hp(path, save=SAVE_PIC), name='T3')
+        thread4 = threading.Thread(target=agents[0].plot_all(path, save=SAVE_PIC), name='T4')
 
-    # show winner net
-    node_names = {-1: 'enemy_hp', -2: 'player_hp_1', -3: 'player_hp_2', -4: 'enemy_x', -5: 'enemy_y', -6: 'player_x_1',
-                  -7: 'player_y_1', -8: 'player_x_2', -9: 'player_y_2', -10: 'distance_1', -11: 'distance_2',
-                  0: 'attack', 1: 'up', 2: 'down', 3: 'left', 4: 'right', 5: 'select'}
-    visualize.draw_net(p.config, winner, True, node_names=node_names)
+        thread1.start()
+        thread2.start()
+        thread3.start()
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        thread4.start()
+        thread4.join()
+        generation = generation + 1
+
+    global generation
+    generation = CHECKPOINT
+    for i in range(CHECKPOINT, END_GENERATION + 1):
+        p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % i)
+        winner = p.run(eval_genomes, 1)  # find the winner in restored population
+
+        # show winner net
+        node_names = {-1: 'enemy_hp', -2: 'player_hp_1', -3: 'player_hp_2', -4: 'enemy_x', -5: 'enemy_y',
+                      -6: 'player_x_1',
+                      -7: 'player_y_1', -8: 'player_x_2', -9: 'player_y_2', -10: 'distance_1', -11: 'distance_2',
+                      0: 'attack', 1: 'up', 2: 'down', 3: 'left', 4: 'right', 5: 'select'}
+        save_path = 'graphs/gen' + str(i)
+        visualize.draw_net(p.config, winner, path=save_path, view=False, node_names=node_names)
+
+
+def softmax(x):
+    x = x - np.max(x)
+    exp_x = np.exp(x)
+    softmax_x = exp_x / np.sum(exp_x)
+    return softmax_x
 
 
 def _main(unused_argv):

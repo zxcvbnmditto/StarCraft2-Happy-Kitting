@@ -1,8 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import math
-import time
 import random
-import matplotlib.pyplot as plt
 from pysc2.lib import actions
 
 _NO_OP = actions.FUNCTIONS.no_op.id
@@ -61,6 +60,7 @@ class SmartAgent(object):
         # self defined vars
         self.player_hp = []
         self.enemy_hp = []
+        self.my_reward = []
         self.fighting = False
 
 
@@ -75,6 +75,7 @@ class SmartAgent(object):
 
         self.player_hp.append(sum(player_hp))
         self.enemy_hp.append(sum(enemy_hp))
+        self.my_reward.append(reward)
 
         return current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count
 
@@ -272,20 +273,47 @@ class SmartAgent(object):
 
 
     def plot_player_hp(self, path, save):
-        plt.plot(np.arange(len(self.player_hp)), self.player_hp)
+        plt.plot(np.arange(len(self.player_hp)), self.player_hp, 'b-')
         plt.ylabel('player hp')
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/player_hp.png')
-        plt.show()
+        plt.close()
+
+
 
     def plot_enemy_hp(self, path, save):
-        plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp)
+        plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp, 'r-')
         plt.ylabel('enemy hp')
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/enemy_hp.png')
-        plt.show()
+        plt.close()
+
+
+    def plot_reward(self, path, save):
+        plt.plot(np.arange(len(self.my_reward)), self.my_reward, '#33FF90')
+        plt.ylabel('reward')
+        plt.xlabel('training steps')
+        if save:
+            plt.savefig(path + '/reward.png')
+        plt.close()
+
+
+
+    def plot_all(self, path, save):
+        plt.plot(np.arange(len(self.player_hp)), self.player_hp, 'b-', label="player_hp")
+        plt.plot(np.arange(len(self.enemy_hp)), self.enemy_hp, 'r-', label="enemy_hp")
+        plt.ylabel('hp')
+        plt.xlabel('training steps')
+
+        if save:
+            plt.savefig(path + '/all.png')
+        plt.close()
+
+        self.my_reward = []
+        self.enemy_hp = []
+        self.player_hp = []
 
     # from the origin base.agent
     def setup(self, obs_spec, action_spec):

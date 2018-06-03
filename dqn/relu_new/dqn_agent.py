@@ -61,7 +61,7 @@ class SmartAgent(object):
 
         self.dqn = DeepQNetwork(
             len(smart_actions),
-            11, # one of the most important data that needs to be update manually
+            5, # one of the most important data that needs to be update manually
             learning_rate=0.01,
             reward_decay=0.9,
             e_greedy=0.9,
@@ -204,7 +204,7 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
+        current_state = np.hstack((feature1, feature2, feature5))
 
         return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 

@@ -61,7 +61,7 @@ class SmartAgent(object):
 
         self.ddpg = DDPG(
             a_dim=len(smart_actions),
-            s_dim=5, # one of the most important data that needs to be update manually
+            s_dim=11, # one of the most important data that needs to be update manually
         )
 
         # self defined vars
@@ -124,18 +124,17 @@ class SmartAgent(object):
 
         # give reward by calculating opponents units lost hp
         for i in range(0, DEFAULT_ENEMY_COUNT):
-            reward += ((ENEMY_MAX_HP - enemy_hp[i]) * 10. / ENEMY_MAX_HP)
+            reward += ((ENEMY_MAX_HP - enemy_hp[i]) * 2)
 
         # give reward by remaining player units hp
         for i in range(0, DEFAULT_PLAYER_COUNT):
-            reward += (player_hp[i] * 5. / PLAYER_MAX_HP)
+            reward += (player_hp[i])
+            reward -= (distance[i] - 10) ** 2
 
-            if distance[0] <= 5 or distance[0] > 25:
-                reward -= -3.
+        if reward < 0:
+            reward = 0
 
         # get killed and lost unit reward from the map
-        reward += obs.reward
-
         reward = int(reward)
 
         return reward
@@ -195,7 +194,7 @@ class SmartAgent(object):
         feature5 = np.array(min_distance).flatten() # distance
 
         # combine all features horizontally
-        current_state = np.hstack((feature1, feature2, feature5))
+        current_state = np.hstack((feature1, feature2, feature3, feature4, feature5))
 
         return current_state, enemy_hp, player_hp, enemy, player, min_distance, is_selected, enemy_unit_count, player_unit_count
 
