@@ -45,7 +45,6 @@ class DDPG(object):
         self.soft_replace = [[tf.assign(ta, (1 - TAU) * ta + TAU * ea), tf.assign(tc, (1 - TAU) * tc + TAU * ec)]
                              for ta, ea, tc, ec in zip(self.at_params, self.ae_params, self.ct_params, self.ce_params)]
 
-
         with tf.variable_scope('q_target'):
             q_target = self.R + GAMMA * q_
             tf.summary.histogram('q_target', q_target)

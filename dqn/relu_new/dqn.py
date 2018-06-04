@@ -8,7 +8,7 @@ class DeepQNetwork(object):
             self,
             n_actions,
             n_features,
-            learning_rate=0.01,
+            learning_rate=0.001,
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=300,
@@ -69,34 +69,34 @@ class DeepQNetwork(object):
         with tf.variable_scope('eval_net'):
             # layer 1
             with tf.variable_scope('layer1'):
-                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=True, )
+                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=False, )
 
             # layer 2
-            with tf.variable_scope('layer2'):
-                l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
-
-            with tf.variable_scope('layer3'):
-                l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
+            # with tf.variable_scope('layer2'):
+            #     l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
+            #
+            # with tf.variable_scope('layer3'):
+            #     l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
             # output layer
             with tf.variable_scope('output_layer'):
-                self.q_eval = self.add_layer(inputs=l3, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
+                self.q_eval = self.add_layer(inputs=l1, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
 
         with tf.variable_scope('target_net'):
             # layer 1
             with tf.variable_scope('layer1'):
-                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=True, )
+                l1 = self.add_layer(inputs=self.s, in_size=self.n_features, out_size=6, activation_function=tf.nn.relu, norm=False, )
 
             # layer 2
-            with tf.variable_scope('layer2'):
-                l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
-
-            with tf.variable_scope('layer3'):
-                l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
+            # with tf.variable_scope('layer2'):
+            #     l2 = self.add_layer(inputs=l1, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
+            #
+            # with tf.variable_scope('layer3'):
+            #     l3 = self.add_layer(inputs=l2, in_size=6, out_size=6, activation_function=tf.nn.relu, norm=True, )
 
             # output layer
             with tf.variable_scope('output_layer'):
-                self.q_next = self.add_layer(inputs=l3, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
+                self.q_next = self.add_layer(inputs=l1, in_size=6, out_size=self.n_actions, activation_function=tf.nn.relu, norm=False, )
 
 
         with tf.variable_scope('q_target'):

@@ -46,7 +46,7 @@ flags.DEFINE_string("agent", "dqn_agent.SmartAgent",
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 15000, "Total agent steps.")
 
 # Change the three booleans to save or not save the models
 LOAD_MODEL = False
