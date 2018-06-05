@@ -108,3 +108,6 @@ pop.add_reporter(neat.Checkpointer(<num-can-be-changed>))
 #### Reminder
 1. Neat is still under the process of developing. It may have some bugs not being fixed yet
 2. I will have to double check the ddpg algorithm implemenation, especially the a_loss and gradients
+
+#### Results
+We will evaluate our result using the enemy hp

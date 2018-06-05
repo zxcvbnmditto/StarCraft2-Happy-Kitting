@@ -35,11 +35,11 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
-# Change the following 3 flags to run the program successfully
-# agent, agent_file, map
+# Change the following 2 flags to run the program successfully
+# agent, map, max_agent_steps
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "ddpg_agent.SmartAgent",
+flags.DEFINE_string("agent", "dqn_agent.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
@@ -59,6 +59,7 @@ flags.DEFINE_integer("screen_resolution", 84,
                      "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
+
 
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
@@ -89,18 +90,18 @@ def run_thread(agent_cls, map_name, visualize):
 
         # restore the model only if u have the previously trained a model
         if LOAD_MODEL:
-            agent.ddpg.load_model(path)
+            agent.dqn.load_model(path)
 
         # run the steps
         run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
         # save the model
         if SAVE_MODEL:
-            agent.ddpg.save_model(path, 1)
+            agent.dqn.save_model(path, 1)
 
         # plot cost and reward
-        agent.ddpg.plot_cost(path, save=SAVE_PIC)
-        agent.ddpg.plot_reward(path, save=SAVE_PIC)
+        agent.dqn.plot_cost(path, save=SAVE_PIC)
+        agent.dqn.plot_reward(path, save=SAVE_PIC)
         agent.plot_hp(path, save=SAVE_PIC)
 
         if FLAGS.save_replay:

@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 #####################  hyper parameters  ####################
 
-LR_A = 0.1    # learning rate for actor
-LR_C = 0.2    # learning rate for critic
+LR_A = 0.001    # learning rate for actor
+LR_C = 0.001    # learning rate for critic
 GAMMA = 0.9     # reward discount
 TAU = 0.01      # soft replacement
 MEMORY_CAPACITY = 5000
@@ -76,23 +76,12 @@ class DDPG(object):
         self.cost_his = []
         self.reward = []
 
-    def choose_action(self, observation, disabled_actions):
+    def choose_action(self, observation):
         # to have batch dimension when feed into tf placeholder
         observation = observation[np.newaxis, :]
-
         # forward feed the observation and get q value for every actions
         actions_probs = self.sess.run(self.a, feed_dict={self.S: observation})
-
-        # assign to 0 since 0 is the min of relu
-        for i in range(0, len(disabled_actions)):
-            actions_probs[0][disabled_actions[i]] = 0 # may have to change
-
-        # redistribute the prob after considering disabled actions
-        # integrate disabled actions into _build_a ???
-        updated_actions_probs = np.array([actions_probs[0][x] / sum(sum(actions_probs)) for x in range(0,
-                                                                                                       self.a_dim)])
-
-        action = np.random.choice(a=range(len(updated_actions_probs)), p=updated_actions_probs.flatten())
+        action = np.random.choice(a=range(len(actions_probs.flatten())), p=actions_probs.flatten())
 
         return action
 
@@ -128,7 +117,7 @@ class DDPG(object):
 
     def _build_a(self, s, scope, trainable):
         with tf.variable_scope(scope):
-            net = tf.layers.dense(s, 6, activation=tf.nn.relu6, name='l1', trainable=trainable)
+            net = tf.layers.dense(s, 6, activation=tf.nn.sigmoid, name='l1', trainable=trainable)
             a = tf.layers.dense(net, self.a_dim, activation=tf.nn.softmax, name='a', trainable=trainable)
 
             return a
@@ -141,7 +130,7 @@ class DDPG(object):
             b1 = tf.get_variable('b1', [1, n_l1], trainable=trainable)
             net = tf.nn.relu(tf.matmul(s, w1_s) + tf.matmul(a, w1_a) + b1)
 
-            return tf.layers.dense(net, 1, trainable=trainable)  # Q(s,a)
+            return tf.layers.dense(net, 6, trainable=trainable)  # Q(s,a)
 
     def plot_reward(self, path, save):
         plt.plot(np.arange(len(self.reward)), self.reward)
@@ -149,7 +138,7 @@ class DDPG(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/reward.png')
-        plt.show()
+        plt.close()
 
     def plot_cost(self, path, save):
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
@@ -157,7 +146,7 @@ class DDPG(object):
         plt.xlabel('training steps')
         if save:
             plt.savefig(path + '/cost.png')
-        plt.show()
+        plt.close()
 
     def save_model(self, path, count):
         self.saver.save(self.sess, path + '/model.pkl', count)
