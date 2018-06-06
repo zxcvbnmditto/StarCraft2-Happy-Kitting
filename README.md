@@ -1,13 +1,12 @@
 #### About
 This is a project of creating a Starcraft 2 bot applying reinforcement learning
 
-You can find three agents applied with three different algorithm: DQN, DDPG, and NEAT.
+You can find three agents applied with three different algorithm: DQN, DDPG, and NEAT. There is also a scripted bot avaialbe.
+
 
 I set the inputs to be a list of features of length 11, which contains the information of player units' hp, coordinates, closest distance to the opponent's units and opponents hp and coordinates. (I know its a bit confusing) 
 
-The outputs are 6 actions: attack, move up, move down, move right, move left, and select unit. 
-
-The dqn and ddpg models are pretrained with 25000 steps, and the neat model is pretrained with 10 generations. 
+The dqn and ddpg models are pretrained with 50000 steps, and the neat model is pretrained with 10 generations. 
 
 All the mini maps used in this project can be found in the maps folder <br>
 You can also find some pretrained models in the models folder
@@ -41,7 +40,7 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 ~/StarCraft II/Maps/mini_games (Linux)
 ```
 #### Running
-1. Lastly, go to the directory where u clone this repository and run
+1. Navigates to the directory that you are interested tha most and run the following line in the terminal
 ```
  python3 -m main
 ```
@@ -111,3 +110,4 @@ pop.add_reporter(neat.Checkpointer(<num-can-be-changed>))
 
 #### Results
 We will evaluate our result using leftover enemy hp in each episodes and calculate the average.  
+

@@ -35,17 +35,18 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
-# Change the following 2 flags to run the program successfully
+# Change the following 3 flags to run the program successfully
 # agent, map, max_agent_steps
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
+# specifies the agent file that you are running
 flags.DEFINE_string("agent", "dqn_agent.SmartAgent",
                     "Which agent to run")
 
-# edit map used here
+# specifies the map that you want to test on 
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
-# edit steps limit to control training episodes.
+# specifies the maximum step count for this run
 flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
 
 # Change the three booleans to save or not save the models
