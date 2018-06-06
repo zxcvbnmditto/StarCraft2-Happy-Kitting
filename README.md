@@ -3,11 +3,6 @@ This is a project of creating a Starcraft 2 bot applying reinforcement learning
 
 You can find three agents applied with three different algorithm: DQN, DDPG, and NEAT. There is also a scripted bot avaialbe.
 
-
-I set the inputs to be a list of features of length 11, which contains the information of player units' hp, coordinates, closest distance to the opponent's units and opponents hp and coordinates. (I know its a bit confusing) 
-
-The dqn and ddpg models are pretrained with 50000 steps, and the neat model is pretrained with 10 generations. 
-
 All the mini maps used in this project can be found in the maps folder <br>
 You can also find some pretrained models in the models folder
 
@@ -44,22 +39,6 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 ```
  python3 -m main
 ```
-#### Modified the code for ddpg or dqn
-1. Change the flags in main.py if needed
-2. Change the option of save model, load model, and save_pic in main.py if needed
-3. Change the important map info in the agent file
-```
-DEFAULT_ENEMY_COUNT
-DEFAULT_PLAYER_COUNT
-ENEMY_MAX_HP 
-PLAYER_MAX_HP
-```
-
-#### Use Tensorboard to visualize the data for ddpg or dqn
-```
-Run this after you have already run the agent at least once
-tensorboard --logdir logs/
-```
 #### Modified the code for neat
 1. Change the important flags in main.py if needed
 2. Change these global variables variables to control the running time in main.py
@@ -87,27 +66,35 @@ pop.add_reporter(neat.Checkpointer(<num-can-be-changed>))
 6. Fitness function in main.py
 7. Reward in agent.py
 
-#### Current Progress:
-1. Using the updated pysc2 API
-2. Extract units hp and location as features
-3. Caculate the minimum distance between each of the player's unit to the opponent's units
-4. Use disabled actions to filter the unnecessary action based on current state
-5. Save, restore model, and plotting data enabled
-6. Prescipted a few initial actions of the agent to increase the performance by not wasting steps searching the enemy cluelessly
-7. Temporarily fix and generalize the select_point action
-8. Generalize the code so it is easy to be modified and tested
-9. Applied Tensorboard to dqn and modified the DQN network structure
-
-
-#### Coming up:
-1. Test the performance of the agent and update the action, reward, and extracted features if needed
-2. Applied tensorboard to the ddpg network and potentially modified the ddpg network
-3. Tweaking :)
-
-#### Reminder
-1. Neat is still under the process of developing. It may have some bugs not being fixed yet
-2. I will have to double check the ddpg algorithm implemenation, especially the a_loss and gradients
-
 #### Results
 We will evaluate our result using leftover enemy hp in each episodes and calculate the average.  
 
+Rank by winning rate: 
+> scipted (99.44%) > dqn (7.59%) > ddpg (0.27%)
+
+Rank by average leftover sum of enemy's hp:
+> scripted (106.047) > dqn (25.056) > ddpg(49.275)
+
+#### Scripted
+<p align="center">
+  <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="scripted/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
+  <img src="scripted/graphs/player_hp.png">
+</p>
+
+#### DQN
+<p align="center">
+  <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="dqn/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
+  <img src="dqn/graphs/player_hp.png">
+</p>
+
+#### DDPG
+<p align="center">
+  <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="ddpg/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
+  <img src="ddpg/graphs/player_hp.png">
+</p>

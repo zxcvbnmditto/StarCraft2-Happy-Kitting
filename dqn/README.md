@@ -74,12 +74,12 @@ Winning rate: 7.59%
 Average leftover sum of enemys' hp  = 25.0569
 
 <p align="center">
-  Leftover enemy hp in each episodes <br>
+  <h2 align = "center">Leftover enemy hp in each episodes <br>
   <img src="graphs/eval.png">
 </p>
 
 
 <p align="center">
-  Overview of change of enemy hp throughout 500000 steps <br>
+  <h2 align = "center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="graphs/enemy_hp.png">
 </p>

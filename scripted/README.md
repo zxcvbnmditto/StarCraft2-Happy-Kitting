@@ -35,17 +35,17 @@ Average leftover sum of enemys' hp  = 0.025
 Average leftover sum of player's hp: 106.047
 
 <p align="center">
-  Leftover enemy hp in each episodes <br>
+  <h2 align = "center"> Leftover enemy hp in each episodes <br>
   <img src="graphs/eval.png">
 </p>
 
 
 <p align="center">
-  Overview of change of enemy hp throughout 500000 steps <br>
+  <h2 align = "center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="graphs/enemy_hp.png">
 </p>
 
 <p align="center">
-  Overview of change of player hp throughout 500000 steps <br>
+  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
   <img src="graphs/player_hp.png">
 </p>
