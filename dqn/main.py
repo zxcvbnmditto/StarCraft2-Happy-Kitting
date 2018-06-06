@@ -35,11 +35,11 @@ from absl import flags
 
 FLAGS = flags.FLAGS
 
-# Change the following 3 flags to run the program successfully
-# agent, agent_file, map
+# Change the following 2 flags to run the program successfully
+# agent, map, max_agent_steps
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "ddpg_agent.SmartAgent",
+flags.DEFINE_string("agent", "dqn_agent.SmartAgent",
                     "Which agent to run")
 
 # edit map used here
@@ -49,7 +49,7 @@ flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
 
 # Change the three booleans to save or not save the models
-LOAD_MODEL = False
+LOAD_MODEL = True
 SAVE_MODEL = True
 SAVE_PIC = True
 
@@ -59,6 +59,7 @@ flags.DEFINE_integer("screen_resolution", 84,
                      "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
+
 
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
@@ -87,20 +88,21 @@ def run_thread(agent_cls, map_name, visualize):
         # set the path to save the models and graphs
         path1 = 'models/'
         path2 = 'graphs/'
+
         # restore the model only if u have the previously trained a model
         if LOAD_MODEL:
-            agent.ddpg.load_model(path1)
+            agent.dqn.load_model(path1)
 
         # run the steps
         run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
         # save the model
         if SAVE_MODEL:
-            agent.ddpg.save_model(path1, 1)
+            agent.dqn.save_model(path1, 1)
 
         # plot cost and reward
-        agent.ddpg.plot_cost(path2, save=SAVE_PIC)
-        agent.ddpg.plot_reward(path2, save=SAVE_PIC)
+        agent.dqn.plot_cost(path2, save=SAVE_PIC)
+        agent.dqn.plot_reward(path2, save=SAVE_PIC)
         agent.plot_hp(path2, save=SAVE_PIC)
 
         if FLAGS.save_replay:

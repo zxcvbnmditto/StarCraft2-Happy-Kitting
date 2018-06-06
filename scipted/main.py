@@ -39,20 +39,17 @@ FLAGS = flags.FLAGS
 # agent, agent_file, map
 
 # modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-flags.DEFINE_string("agent", "ddpg_agent.SmartAgent",
+flags.DEFINE_string("agent", "agent.SmartAgent",
                     "Which agent to run")
+
+# modify executing file name here
+flags.DEFINE_string("agent_file", "agent",
+                    "Which file to run")
 
 # edit map used here
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
-# edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
-
-# Change the three booleans to save or not save the models
-LOAD_MODEL = False
-SAVE_MODEL = True
 SAVE_PIC = True
-
 # -----------------------------------------------------------------------------------------------
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
 flags.DEFINE_integer("screen_resolution", 84,
@@ -60,6 +57,8 @@ flags.DEFINE_integer("screen_resolution", 84,
 flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
+# edit steps limit to control training episodes.
+flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
 
@@ -70,76 +69,65 @@ flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
+
 # -----------------------------------------------------------------------------------------------
 def run_thread(agent_cls, map_name, visualize):
-    with sc2_env.SC2Env(
-            map_name=map_name,
-            step_mul=FLAGS.step_mul,
-            game_steps_per_episode=FLAGS.game_steps_per_episode,
-            feature_screen_size=FLAGS.screen_resolution,
-            feature_minimap_size=FLAGS.minimap_resolution,
-            visualize=visualize,
-            use_feature_units=True
-    ) as env:
-        env = available_actions_printer.AvailableActionsPrinter(env)
-        agent = agent_cls()
+  with sc2_env.SC2Env(
+      map_name=map_name,
+      step_mul=FLAGS.step_mul,
+      game_steps_per_episode=FLAGS.game_steps_per_episode,
+      feature_screen_size=FLAGS.screen_resolution,
+      feature_minimap_size=FLAGS.minimap_resolution,
+      visualize=visualize,
+      use_feature_units=True
+  ) as env:
+    env = available_actions_printer.AvailableActionsPrinter(env)
+    agent = agent_cls()
 
-        # set the path to save the models and graphs
-        path1 = 'models/'
-        path2 = 'graphs/'
-        # restore the model only if u have the previously trained a model
-        if LOAD_MODEL:
-            agent.ddpg.load_model(path1)
+    agent_name = FLAGS.agent_file
 
-        # run the steps
-        run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
+    # set the path to save the models and graphs
+    path = 'graphs/'
 
-        # save the model
-        if SAVE_MODEL:
-            agent.ddpg.save_model(path1, 1)
+    # run the steps
+    run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
 
-        # plot cost and reward
-        agent.ddpg.plot_cost(path2, save=SAVE_PIC)
-        agent.ddpg.plot_reward(path2, save=SAVE_PIC)
-        agent.plot_hp(path2, save=SAVE_PIC)
+    agent.plot_hp(path, save=SAVE_PIC)
 
-        if FLAGS.save_replay:
-            env.save_replay(agent_cls.__name__)
-
+    if FLAGS.save_replay:
+      env.save_replay(agent_cls.__name__)
 
 def _main(unused_argv):
-    """Run an agent."""
-    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
-    stopwatch.sw.trace = FLAGS.trace
+  """Run an agent."""
+  stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
+  stopwatch.sw.trace = FLAGS.trace
 
-    # Map Name
-    mapName = FLAGS.map
+  # Map Name
+  mapName = FLAGS.map
 
-    globals()[mapName] = type(mapName, (maps.mini_games.MiniGame,), dict(filename=mapName))
+  globals()[mapName] = type(mapName, (maps.mini_games.MiniGame,), dict(filename=mapName))
 
-    maps.get(FLAGS.map)  # Assert the map exists.
+  maps.get(FLAGS.map)  # Assert the map exists.
 
-    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
-    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
+  agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
+  agent_cls = getattr(importlib.import_module(agent_module), agent_name)
 
-    threads = []
-    for _ in range(FLAGS.parallel - 1):
-        t = threading.Thread(target=run_thread, args=(agent_cls, FLAGS.map, False))
-        threads.append(t)
-        t.start()
+  threads = []
+  for _ in range(FLAGS.parallel - 1):
+    t = threading.Thread(target=run_thread, args=(agent_cls, FLAGS.map, False))
+    threads.append(t)
+    t.start()
 
-    run_thread(agent_cls, FLAGS.map, FLAGS.render)
+  run_thread(agent_cls, FLAGS.map, FLAGS.render)
 
-    for t in threads:
-        t.join()
+  for t in threads:
+    t.join()
 
-    if FLAGS.profile:
-        print(stopwatch.sw)
-
+  if FLAGS.profile:
+    print(stopwatch.sw)
 
 def entry_point():  # Needed so setup.py scripts work.
-    app.run(_main)
-
+  app.run(_main)
 
 if __name__ == "__main__":
-    app.run(_main)
+  app.run(_main)

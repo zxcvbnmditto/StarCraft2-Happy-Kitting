@@ -1,3 +1,0 @@
-AVG ENEMY HP LEFT 28.03875968992248
-Low hp controlled steps 12967
-

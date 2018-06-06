@@ -110,4 +110,4 @@ pop.add_reporter(neat.Checkpointer(<num-can-be-changed>))
 2. I will have to double check the ddpg algorithm implemenation, especially the a_loss and gradients
 
 #### Results
-We will evaluate our result using the enemy hp
+We will evaluate our result using leftover enemy hp in each episodes and calculate the average.  
