@@ -18,17 +18,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
+import matplotlib
+
+matplotlib.use('Agg')
 import importlib
+import neat
+import visualize
+import os
+import shutil
+import numpy as np
 import threading
 
 from future.builtins import range  # pylint: disable=redefined-builtin
-
 from pysc2 import maps
 from pysc2.env import available_actions_printer
 from pysc2.env import sc2_env
 from pysc2.lib import stopwatch
-
+from pysc2.lib import actions
 from absl import app
 from absl import flags
 
@@ -41,12 +47,17 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("agent", "agent.SmartAgent",
                     "Which agent to run")
 
-# modify executing file name here
-flags.DEFINE_string("agent_file", "agent",
-                    "Which file to run")
-
 # edit map used here
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
+
+CONFIG = "./config"
+EP_STEP = 400  # maximum episode steps
+GENERATION_EP = 2  # evaluate each genome by average n episodes
+END_GENERATION = 500 # specify the last generation
+CHECKPOINT = 300 # specify the starting generation
+TRAINING = True  # training or evaluating
+EVALUATING = True
+SAVE_PIC = True  # set true to save the customize plots
 
 # -----------------------------------------------------------------------------------------------
 flags.DEFINE_bool("render", True, "Whether to render with pygame.")
@@ -56,7 +67,7 @@ flags.DEFINE_integer("minimap_resolution", 64,
                      "Resolution for minimap feature layers.")
 
 # edit steps limit to control training episodes.
-flags.DEFINE_integer("max_agent_steps", 25000, "Total agent steps.")
+flags.DEFINE_integer("max_agent_steps", 500, "Total agent steps.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
 
@@ -64,10 +75,9 @@ flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
 flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
 
-flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
+flags.DEFINE_bool("save_replay", True , "Whether to save a replay at the end.")
 
 flags.mark_flag_as_required("map")
-
 
 # -----------------------------------------------------------------------------------------------
 def run_thread(agent_cls, map_name, visualize):
@@ -83,28 +93,204 @@ def run_thread(agent_cls, map_name, visualize):
         env = available_actions_printer.AvailableActionsPrinter(env)
         agent = agent_cls()
 
-        agent_name = FLAGS.agent_file
+        if TRAINING:
+            run_loop([agent], env)
 
-        # set the path to save the models and graphs
-        path = 'models/' + agent_name
-
-        # restore the model only if u have the previously trained a model
-        # agent.dqn.load_model(path)
-
-        # run the steps
-        run_loop([agent], env, FLAGS.max_agent_steps)
-
-        # save the model
-        # agent.dqn.save_model(path, 1)
-
-        # plot cost and reward
-        # agent.dqn.plot_cost(path, save=False)
-        # agent.dqn.plot_reward(path, save=False)
-        # agent.plot_player_hp(path, save=False)
-        # agent.plot_enemy_hp(path, save=False)
+        if EVALUATING:
+            evaluation([agent], env)
 
         if FLAGS.save_replay:
             env.save_replay(agent_cls.__name__)
+
+
+def run_loop(agents, env):
+    """A run loop to have agents and an environment interact."""
+    observation_spec = env.observation_spec()
+    action_spec = env.action_spec()
+    for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
+        agent.setup(obs_spec, act_spec)
+
+    # restore from the model or not
+    if CHECKPOINT == 0:
+        config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                             neat.DefaultSpeciesSet, neat.DefaultStagnation, CONFIG)
+        pop = neat.Population(config)
+    else:
+        pop = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % CHECKPOINT)
+
+    # recode history
+    stats = neat.StatisticsReporter()
+    pop.add_reporter(stats)
+    pop.add_reporter(neat.StdOutReporter(True))
+    pop.add_reporter(neat.Checkpointer(generation_interval=1, filename_prefix="neat-checkpoint-"))  # num
+
+    # pop.add_reporter(neat.Checkpointer(generation_interval=1, filename_prefix="graphs/neat-checkpoint-"))  # num
+
+    # represents
+
+    def eval_genomes(genomes, config):
+        # total estimated count 10 * 10 * 10 * 500
+        global generation
+        count, previous_count = 0, 0
+
+        # set the path to save the models and graphs
+        path = 'graphs/gen' + str(generation) + '/train'
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        for genome_id, genome in genomes:
+
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            ep_r = []
+            # loop count pop in each gen
+            for ep in range(GENERATION_EP):  # run many episodes for the genome in case it's lucky
+                print("Generation ", generation, "Genome_id ", genome_id, " episode ", ep, " count ", count)
+                accumulative_r = 0.  # stage longer to get a greater episode reward
+                timesteps = env.reset()
+
+                for a in agents:
+                    a.reset()
+
+                previous_count = count
+                for step in range(EP_STEP):
+                    # it finally works
+                    current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = \
+                        agents[0].step(timesteps[0])
+
+                    if not agents[0].fighting:
+                        for i in range(0, player_count):
+                            if distance[i] < 20:
+                                agents[0].fighting = True
+                                action = actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
+                                break
+
+                            action = actions.FunctionCall(actions.FUNCTIONS.Move_screen.id, [[0], enemy_loc[0]])
+                    else:
+                        count = count + 1
+                        action_values = net.activate(current_state)
+
+                        action_values = np.random.choice(a=range(6), p=softmax(action_values))
+
+                        action = agents[0].perform_action(timesteps[0], action_values, player_loc, enemy_loc, selected,
+                                                          player_count, enemy_count, distance, player_hp)
+                        accumulative_r += reward
+
+                    if timesteps[0].last():
+                        break
+                    timesteps = env.step([action])
+
+                ep_r.append(accumulative_r / (count - previous_count))
+
+            genome.fitness = np.max(ep_r)  # depends on the minimum episode reward
+            print(genome.fitness)
+
+        # Plot graphs
+        thread1 = threading.Thread(target=agents[0].plot_all(path, save=SAVE_PIC), name='T1')
+
+        thread1.start()
+        thread1.join()
+        generation = generation + 1
+
+    global generation
+    generation = CHECKPOINT
+    # call and run the NEAT algorithm
+    pop.run(eval_genomes, END_GENERATION - CHECKPOINT + 1)  # train 10 generations:
+
+    # visualize training
+    visualize.plot_stats(stats, ylog=False, view=False)
+    visualize.plot_species(stats, view=False)
+
+    for i in range(CHECKPOINT, END_GENERATION + 1):
+        shutil.copy2(src="neat-checkpoint-" + str(i), dst='graphs/gen' + str(i))
+
+
+def evaluation(agents, env):
+    def eval_genomes(genomes, config):
+        # total estimated count 10 * 10 * 10 * 500
+        global generation
+        count, previous_count = 0, 0
+
+        # set the path to save the models and graphs
+        path = 'graphs/gen' + str(generation) + '/eval'
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        for genome_id, genome in genomes:
+
+            net = neat.nn.FeedForwardNetwork.create(genome, config)
+            ep_r = []
+            # loop count pop in each gen
+            for ep in range(GENERATION_EP):  # run many episodes for the genome in case it's lucky
+                print("Generation ", generation, "Genome_id ", genome_id, " episode ", ep, " count ", count)
+                accumulative_r = 0.  # stage longer to get a greater episode reward
+                timesteps = env.reset()
+
+                for a in agents:
+                    a.reset()
+
+                previous_count = count
+                for step in range(EP_STEP):
+                    # it finally works
+                    current_state, reward, enemy_hp, player_hp, enemy_loc, player_loc, distance, selected, enemy_count, player_count = \
+                        agents[0].step(timesteps[0])
+
+                    if not agents[0].fighting:
+                        for i in range(0, player_count):
+                            if distance[i] < 20:
+                                agents[0].fighting = True
+                                action = actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
+                                break
+
+                            action = actions.FunctionCall(actions.FUNCTIONS.Move_screen.id, [[0], enemy_loc[0]])
+                    else:
+                        count = count + 1
+                        action_values = net.activate(current_state)
+                        # action_index = np.argmax(action_values)
+
+                        action_values = np.random.choice(a=range(6), p=softmax(action_values))
+
+                        action = agents[0].perform_action(timesteps[0], action_values, player_loc, enemy_loc, selected,
+                                                          player_count, enemy_count, distance, player_hp)
+                        accumulative_r += reward
+
+                    if timesteps[0].last():
+                        break
+                    timesteps = env.step([action])
+
+                ep_r.append(accumulative_r / (count - previous_count))
+
+            genome.fitness = np.max(ep_r)  # depends on the minimum episode reward
+            print(genome.fitness)
+
+        # Plot graphs
+        thread1 = threading.Thread(target=agents[0].plot_all(path, save=SAVE_PIC), name='T1')
+
+        thread1.start()
+        thread1.join()
+        generation = generation + 1
+
+    global generation
+    generation = CHECKPOINT
+    for i in range(CHECKPOINT, END_GENERATION + 1):
+        p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-%i' % i)
+        winner = p.run(eval_genomes, 1)  # find the winner in restored population
+
+        # show winner net
+        node_names = {-1: 'enemy_hp', -2: 'player_hp_1', -3: 'player_hp_2', -4: 'enemy_x', -5: 'enemy_y',
+                      -6: 'player_x_1',
+                      -7: 'player_y_1', -8: 'player_x_2', -9: 'player_y_2', -10: 'distance_1', -11: 'distance_2',
+                      0: 'attack', 1: 'up', 2: 'down', 3: 'left', 4: 'right', 5: 'select'}
+        save_path = 'graphs/gen' + str(i)
+        visualize.draw_net(p.config, winner, path=save_path, view=False, node_names=node_names)
+
+
+def softmax(x):
+    x = x - np.max(x)
+    exp_x = np.exp(x)
+    softmax_x = exp_x / np.sum(exp_x)
+    return softmax_x
 
 
 def _main(unused_argv):
@@ -135,39 +321,6 @@ def _main(unused_argv):
 
     if FLAGS.profile:
         print(stopwatch.sw)
-
-
-def run_loop(agents, env, max_frames=0, max_episodes=0):
-    """A run loop to have agents and an environment interact."""
-    total_frames = 0
-    total_episodes = 0
-    start_time = time.time()
-
-    observation_spec = env.observation_spec()
-    action_spec = env.action_spec()
-    for agent, obs_spec, act_spec in zip(agents, observation_spec, action_spec):
-        agent.setup(obs_spec, act_spec)
-    try:
-        while not max_episodes or total_episodes < max_episodes:
-            total_episodes += 1
-            timesteps = env.reset()
-            for a in agents:
-                a.reset()
-            while True:
-                total_frames += 1
-                actions = [agent.step(timestep)
-                           for agent, timestep in zip(agents, timesteps)]
-                if max_frames and total_frames >= max_frames:
-                    return
-                if timesteps[0].last():
-                    break
-                timesteps = env.step(actions)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        elapsed_time = time.time() - start_time
-        print("Took %.3f seconds for %s steps: %.3f fps" % (
-            elapsed_time, total_frames, total_frames / elapsed_time))
 
 
 def entry_point():  # Needed so setup.py scripts work.

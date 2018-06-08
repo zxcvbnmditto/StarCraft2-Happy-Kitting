@@ -73,7 +73,7 @@ Rank by winning rate:
 > scipted (99.44%) > dqn (7.59%) > ddpg (0.27%)
 
 Rank by average leftover sum of enemy's hp:
-> scripted (106.047) > dqn (25.056) > ddpg(49.275)
+> scripted (0.025) > dqn (25.056) > ddpg(49.275)
 
 #### Scripted
 <p align="center">
