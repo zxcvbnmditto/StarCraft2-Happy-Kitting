@@ -87,9 +87,9 @@ Rank by average leftover sum of enemy's hp:
 <p align="center">
   <h2 align = "center">Overview of change of enemy hp of the best generation by steps<br>
   <img src="neat/graphs/gen306/train/enemy_hp.png">
-  <h2 align="center"> Overview of change of enemy hp throughout by episodes <br>
+  <h2 align="center"> Overview of change of enemy hp of the best generation by episodes <br>
   <img src="neat/graphs/gen306/train/eval.png">
-  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
+  <h2 align="center"> Overview of change of player hp of the best generation by steps <br>
   <img src="neat/graphs/gen306/train/player_hp.png">v
 </p>
 
