@@ -56,29 +56,40 @@ Rank by average leftover sum of enemy's hp:
 <p align="center">
   <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="scripted/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="ddpg/graphs/eval.png">
   <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
   <img src="scripted/graphs/player_hp.png">
+
 </p>
 
 #### DQN
 <p align="center">
   <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="dqn/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="dqn/graphs/eval.png">
   <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
-  <img src="dqn/graphs/player_hp.png">
+  <img src="dqn/graphs/player_hp.png">v
 </p>
 
 #### DDPG
 <p align="center">
   <h2 align="center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="ddpg/graphs/enemy_hp.png"> <br>
+  <h2 align="center"> Overview of change of enemy hp throughout 500000 steps <br>
+  <img src="ddpg/graphs/eval.png">
   <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
-  <img src="ddpg/graphs/player_hp.png">
+  <img src="ddpg/graphs/player_hp.png">v
 </p>
 
 #### NEAT
 <p align="center">
-  <h2 align = "center">Overview of change of enemy hp of the best generation <br>
+  <h2 align = "center">Overview of change of enemy hp of the best generation by steps<br>
   <img src="neat/graphs/gen306/train/enemy_hp.png">
+  <h2 align="center"> Overview of change of enemy hp throughout by episodes <br>
+  <img src="neat/graphs/gen306/train/eval.png">
+  <h2 align="center"> Overview of change of player hp throughout 500000 steps <br>
+  <img src="neat/graphs/gen306/train/player_hp.png">v
 </p>
 
