@@ -61,6 +61,6 @@ Best average leftover sum of enemys' hp  = 55.74 (gen 306)
 </p>
 
 <p align="center">
-  <h2 align="center"> Fitness change throughout 500 generations <br>
+  <h2 align="center"> Fitness change throughout generations 300 - generation 500 <br>
   <img src="avg_fitness.svg">
 </p>
