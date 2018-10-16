@@ -16,6 +16,7 @@ You can also find some pretrained models in the models folder
 
 >Neat-python 0.92
 
+>Starcraft 2 version 4.1.2 (Linux)
 #### Installation
 1. Clone this repository
 ```
