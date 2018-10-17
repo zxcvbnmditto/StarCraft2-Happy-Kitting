@@ -45,6 +45,13 @@ Application/StarCraft II/Maps/mini_games (MacOS)
 ```
 
 #### Results
+Temporarily closed
+
+#### Updates
+All models would be updated and retrained. Please be patient for the improved version of the kitting bot.
+
+
+<!--
 We will evaluate our result using leftover enemy hp in each episodes and calculate the average.  
 
 Rank by winning rate: 
@@ -52,6 +59,7 @@ Rank by winning rate:
 
 Rank by average leftover sum of enemy's hp:
 > scripted (0.025) > dqn (25.056) > ddpg(49.275) > neat(55.74)
+
 
 #### Scripted
 <p align="center">
@@ -94,3 +102,4 @@ Rank by average leftover sum of enemy's hp:
   <img src="neat/graphs/gen306/train/player_hp.png">v
 </p>
 
+-->

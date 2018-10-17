@@ -65,7 +65,13 @@ Run this after you have already run the agent at least once
 ```
 tensorboard --logdir logs
 ```
+#### Results
+Temporarily closed
 
+#### Updates
+All models would be updated and retrained. Please be patient for the improved version of the kitting bot.
+
+<!--
 ## Result
 In 500000 steps
 
@@ -83,3 +89,4 @@ Average leftover sum of enemys' hp  = 25.0569
   <h2 align = "center">Overview of change of enemy hp throughout 500000 steps <br>
   <img src="graphs/enemy_hp.png">
 </p>
+-->

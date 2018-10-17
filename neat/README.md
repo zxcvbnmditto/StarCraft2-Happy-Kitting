@@ -42,6 +42,13 @@ ENEMY_MAX_HP # set to 150 as default
 PLAYER_MAX_HP # set to 60 as default
 ```
 
+#### Results
+Temporarily closed
+
+#### Updates
+All models would be updated and retrained. Please be patient for the improved version of the kitting bot.
+
+<!--
 ## Result
 In 500 generations
 
@@ -64,3 +71,4 @@ Best average leftover sum of enemys' hp  = 55.74 (gen 306)
   <h2 align="center"> Fitness change throughout generations 300 - generation 500 <br>
   <img src="avg_fitness.svg">
 </p>
+-->
