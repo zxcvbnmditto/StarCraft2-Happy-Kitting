@@ -78,10 +78,17 @@ def run_thread(agent_cls, map_name, visualize):
             map_name=map_name,
             step_mul=FLAGS.step_mul,
             game_steps_per_episode=FLAGS.game_steps_per_episode,
-            feature_screen_size=FLAGS.screen_resolution,
-            feature_minimap_size=FLAGS.minimap_resolution,
+            agent_interface_format=sc2_env.AgentInterfaceFormat(
+                feature_dimensions=sc2_env.Dimensions(
+                    screen=FLAGS.screen_resolution,
+                    minimap=FLAGS.minimap_resolution,
+                ),
+                use_feature_units=True
+            ),
+            # feature_screen_size=FLAGS.screen_resolution,
+            # feature_minimap_size=FLAGS.minimap_resolution,
             visualize=visualize,
-            use_feature_units=True
+            # use_feature_units=True
     ) as env:
         env = available_actions_printer.AvailableActionsPrinter(env)
         agent = agent_cls()
