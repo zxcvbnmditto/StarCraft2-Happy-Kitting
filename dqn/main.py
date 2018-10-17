@@ -18,64 +18,68 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import importlib
-import threading
-
-from future.builtins import range  # pylint: disable=redefined-builtin
-
 from pysc2 import maps
-from pysc2.env import available_actions_printer
-# from pysc2.env import run_loop
-import run_loop
-from pysc2.env import sc2_env
+from pysc2.env import available_actions_printer, sc2_env
 from pysc2.lib import stopwatch
-
-from absl import app
-from absl import flags
+from dqn_agent import SmartAgent as MyAgentClass
+from absl import app, flags
+import os
+import time
 
 FLAGS = flags.FLAGS
+# specifies the maximum step count for this run
 
-# Change the following 3 flags to run the program successfully
-# agent, map, max_agent_steps
+flags.DEFINE_integer("max_steps", 500, "Total agent steps.")
+flags.DEFINE_integer("max_episodes", 10, "Total agent steps.")
+flags.DEFINE_integer("episode_per_checkpoint", 2, "Total agent steps.")
 
-# modify agent name here: "agent", "YourAgentFileName.YourAgentClassName", "Description"
-# specifies the agent file that you are running
-flags.DEFINE_string("agent", "dqn_agent.SmartAgent",
-                    "Which agent to run")
-
-# specifies the map that you want to test on 
 flags.DEFINE_string("map", 'HK2V1', "Name of a map to use.")
 
-# specifies the maximum step count for this run
-flags.DEFINE_integer("max_agent_steps", 50000, "Total agent steps.")
-
-# Change the three booleans to save or not save the models
-LOAD_MODEL = True
-SAVE_MODEL = True
-SAVE_PIC = True
-
-# -----------------------------------------------------------------------------------------------
-flags.DEFINE_bool("render", True, "Whether to render with pygame.")
-flags.DEFINE_integer("screen_resolution", 84,
-                     "Resolution for screen feature layers.")
-flags.DEFINE_integer("minimap_resolution", 64,
-                     "Resolution for minimap feature layers.")
-
-
+flags.DEFINE_integer("screen_resolution", 84, "Resolution for screen feature layers.")
+flags.DEFINE_integer("minimap_resolution", 64, "Resolution for minimap feature layers.")
 flags.DEFINE_integer("game_steps_per_episode", 0, "Game steps per episode.")
 flags.DEFINE_integer("step_mul", 2, "Game steps per agent step.")
-
+flags.DEFINE_bool("visualize", True, "Whether to render with pygame.")
 flags.DEFINE_bool("profile", False, "Whether to turn on code profiling.")
 flags.DEFINE_bool("trace", False, "Whether to trace the code execution.")
-flags.DEFINE_integer("parallel", 1, "How many instances to run in parallel.")
+flags.DEFINE_integer("thread_count", 5, "How many instances to run in parallel.")
 
-flags.DEFINE_bool("save_replay", True, "Whether to save a replay at the end.")
+flags.DEFINE_float('gpu_fraction', 0.0, 'GPU fraction, 0.0 => allow growth')
+flags.DEFINE_bool("save_replay", False, "Whether to save a replay at the end.")
+flags.DEFINE_string("logs_dir", '/media/james/D/starcraft2/HK2V1/dqn/logs', "Directory to save tensorboard")
+flags.DEFINE_string("models_dir", '/media/james/D/starcraft2/HK2V1/dqn/models', "Directory to save models")
+flags.DEFINE_string("graphs_dir", '/media/james/D/starcraft2/HK2V1/dqn/graphs', "Directory to save graphs")
 
 flags.mark_flag_as_required("map")
 # -----------------------------------------------------------------------------------------------
-def run_thread(agent_cls, map_name, visualize):
+
+def main(unused_argv):
+    print("Main----------------------")
+    """Run an agent."""
+    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
+    stopwatch.sw.trace = FLAGS.trace
+
+    # Create Directory for storage
+    if not os.path.isdir(FLAGS.models_dir):
+        os.makedirs(FLAGS.models_dir)
+
+    if not os.path.isdir(FLAGS.logs_dir):
+        os.makedirs(FLAGS.logs_dir)
+
+    if not os.path.isdir(FLAGS.graphs_dir):
+        os.makedirs(FLAGS.graphs_dir)
+
+    # Assert the map exists
+    globals()[FLAGS.map] = type(FLAGS.map, (maps.mini_games.MiniGame,), dict(filename=FLAGS.map))
+    maps.get(FLAGS.map)
+
+    # Define agent
+    agent = MyAgentClass(FLAGS)
+    # restore the model
+    agent.dqn.load_model(FLAGS.models_dir)
+
     with sc2_env.SC2Env(
-            map_name=map_name,
+            map_name=FLAGS.map,
             step_mul=FLAGS.step_mul,
             game_steps_per_episode=FLAGS.game_steps_per_episode,
             agent_interface_format=sc2_env.AgentInterfaceFormat(
@@ -85,71 +89,57 @@ def run_thread(agent_cls, map_name, visualize):
                 ),
                 use_feature_units=True
             ),
-            # feature_screen_size=FLAGS.screen_resolution,
-            # feature_minimap_size=FLAGS.minimap_resolution,
-            visualize=visualize,
-            # use_feature_units=True
+            visualize=FLAGS.visualize,
     ) as env:
         env = available_actions_printer.AvailableActionsPrinter(env)
-        agent = agent_cls()
 
-        # set the path to save the models and graphs
-        path1 = 'models/'
-        path2 = 'graphs/'
+        observation_spec = env.observation_spec()
+        action_spec = env.action_spec()
+        agent.setup(observation_spec, action_spec)
 
-        # restore the model only if u have the previously trained a model
-        if LOAD_MODEL:
-            agent.dqn.load_model(path1)
+        for episode in range(FLAGS.max_episodes):
+            start_time = time.time()
+            step = -1
 
-        # run the steps
-        run_loop.run_loop([agent], env, FLAGS.max_agent_steps)
+            # Don't modify timesteps
+            timesteps = env.reset()
+            agent.reset()
 
-        # save the model
-        if SAVE_MODEL:
-            agent.dqn.save_model(path1, 1)
+            try:
+                while step < FLAGS.max_steps:
+                    step += 1
+                    actions = [agent.step(timestep) for timestep in timesteps]
+
+                    if timesteps[0].last():
+                        break
+
+                    timesteps = env.step(actions)
+            except KeyboardInterrupt:
+                pass
+            finally:
+                print("Episode: {} Step {} Time {}".format(episode, step, time.time()-start_time))
+
+            if episode % FLAGS.episode_per_checkpoint == 0:
+                agent.dqn.save_model(FLAGS.models_dir, episode)
 
         # plot cost and reward
-        agent.dqn.plot_cost(path2, save=SAVE_PIC)
-        agent.dqn.plot_reward(path2, save=SAVE_PIC)
-        agent.plot_hp(path2, save=SAVE_PIC)
+        agent.dqn.plot_cost(FLAGS.graphs_dir)
+        agent.dqn.plot_reward(FLAGS.graphs_dir)
+        agent.plot_hp(FLAGS.graphs_dir)
 
         if FLAGS.save_replay:
-            env.save_replay(agent_cls.__name__)
-
-
-def _main(unused_argv):
-    """Run an agent."""
-    stopwatch.sw.enabled = FLAGS.profile or FLAGS.trace
-    stopwatch.sw.trace = FLAGS.trace
-
-    # Map Name
-    mapName = FLAGS.map
-
-    globals()[mapName] = type(mapName, (maps.mini_games.MiniGame,), dict(filename=mapName))
-
-    maps.get(FLAGS.map)  # Assert the map exists.
-
-    agent_module, agent_name = FLAGS.agent.rsplit(".", 1)
-    agent_cls = getattr(importlib.import_module(agent_module), agent_name)
-
-    threads = []
-    for _ in range(FLAGS.parallel - 1):
-        t = threading.Thread(target=run_thread, args=(agent_cls, FLAGS.map, False))
-        threads.append(t)
-        t.start()
-
-    run_thread(agent_cls, FLAGS.map, FLAGS.render)
-
-    for t in threads:
-        t.join()
+            env.save_replay(agent)
 
     if FLAGS.profile:
         print(stopwatch.sw)
 
-
-def entry_point():  # Needed so setup.py scripts work.
-    app.run(_main)
-
-
 if __name__ == "__main__":
-    app.run(_main)
+    # Remeber to add this later
+    # config = tf.ConfigProto()
+    # if FLAGS.gpu_fraction > 0.0:
+    #     print("GPU Fraction: {:.3f}".format(FLAGS.gpu_fraction))
+    #     config.gpu_options.per_process_gpu_memory_fraction = FLAGS.gpu_fraction
+    # else:
+    #     print("GPU Fraction: Allow Growth")
+    #     config.gpu_options.allow_growth = True
+    app.run(main)
