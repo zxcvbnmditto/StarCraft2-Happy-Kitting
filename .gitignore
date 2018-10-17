@@ -3,6 +3,8 @@
 *logs
 .vscode/*
 *logs/
+*models/
+*graphs/
 *checkpoint*/
 *test+models/
 *__pycache__/
